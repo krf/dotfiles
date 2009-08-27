@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+# Add auto-completion and a stored history file of commands to your Python
+# interactive interpreter. Requires Python 2.0+, readline. Autocomplete is
+# bound to the Esc key by default (you can change it - see readline docs).
+
+import atexit
+import os
+import readline
+import rlcompleter
+
+historyPath = os.path.expanduser("~/.pyhistory")
+historyTmp = os.path.expanduser("~/.pyhisttmp.py")
+
+endMarkerStr= "# # # histDUMP # # #"
+
+saveMacro= "import readline; readline.write_history_file('"+historyTmp+"'); \
+    print '####>>>>>>>>>>'; print ''.join(filter(lambda lineP: \
+    not lineP.strip().endswith('"+endMarkerStr+"'),  \
+    open('"+historyTmp+"').readlines())[:])+'####<<<<<<<<<<'"+endMarkerStr
+
+readline.parse_and_bind('tab: complete')
+readline.parse_and_bind('\C-w: "'+saveMacro+'"')
+
+def save_history(historyPath=historyPath, endMarkerStr=endMarkerStr):
+    import readline
+    readline.write_history_file(historyPath)
+    # Now filter out those line containing the saveMacro
+    lines= filter(lambda lineP, endMarkerStr=endMarkerStr:
+                      not lineP.strip().endswith(endMarkerStr), open(historyPath).readlines())
+    open(historyPath, 'w+').write(''.join(lines))
+
+if os.path.exists(historyPath):
+    readline.read_history_file(historyPath)
+
+atexit.register(save_history)
+
+del os, atexit, readline, rlcompleter, save_history, historyPath
+del historyTmp, endMarkerStr, saveMacro
+
+# bin()
+_nibbles = {"0":"0000", "1":"0001", "2":"0010", "3":"0011",
+            "4":"0100", "5":"0101", "6":"0110", "7":"0111",
+            "8":"1000", "9":"1001", "A":"1010", "B":"1011",
+            "C":"1100", "D":"1101", "E":"1110", "F":"1111",
+            "-":"-"}
+
+def bin(number):
+	if number == 0:
+		return "0"
+	result = [_nibbles[nibble] for nibble in "%X"%number]
+	result[number<0] = result[number<0].lstrip("0")
+	return "".join(result)
