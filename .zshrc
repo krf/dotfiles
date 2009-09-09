@@ -29,6 +29,7 @@ alias apu='sudo aptitude update; sudo aptitude full-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
+alias whatismyip='wget -O - -o /dev/null http://www.whatismyip.com/automation/n09230945.asp' # http://forum.whatismyip.com/f14/
 
 # Aliases for Vim
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
