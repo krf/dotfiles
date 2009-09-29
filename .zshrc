@@ -56,9 +56,21 @@ colors
 autoload -U promptinit
 promptinit
 setopt promptsubst
-PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}@%{$fg[cyan]%}%m%{${reset_color}%} %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%} %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah --color=never | grep total | tr -d total\ )'"%{${reset_color}%}] "
-RPROMPT="%T" # prompt for right side of screen
+local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
+local cwdsize="$(LC_MESSAGES=C ls -lah --color=never | grep total | tr -d total\ )"
+PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
+@%{$fg[cyan]%}%m%{${reset_color}%}\
+ %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
+ %{$fg[green]%}${cwdsize}%{${reset_color}%}\
+%(?,, ${returncode})%{${reset_color}%}]\
+%{$fg[white]%}%B%#%b%{${reset_color}%} "
+RPROMPT="%{$fg[white]%}%T%{${reset_color}%}" # prompt for right side of screen
 
+# Autoload scripts in .zsh.d
+setopt extended_glob
+for zshrc_snipplet in ~/.zsh.d/S[0-9][0-9]*[^~] ; do
+    source $zshrc_snipplet
+done
 
 # Completion Styles
 
