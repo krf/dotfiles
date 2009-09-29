@@ -58,12 +58,13 @@ promptinit
 setopt promptsubst
 local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
 local cwdsize="$(LC_MESSAGES=C ls -lah --color=never | grep total | tr -d total\ )"
+
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
  %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
  %{$fg[green]%}${cwdsize}%{${reset_color}%}\
-%(?,, ${returncode})%{${reset_color}%}]\
-%{$fg[white]%}%B%#%b%{${reset_color}%} "
+%(?,, ${returncode})%{${reset_color}%}\
+]%{$fg[white]%}%B%#%b%{${reset_color}%} "
 RPROMPT="%{$fg[white]%}%T%{${reset_color}%}" # prompt for right side of screen
 
 # Autoload scripts in .zsh.d
