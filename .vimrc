@@ -43,6 +43,12 @@ imap <C-K> <Esc>dd<Esc>i
 map <C-U> <Esc>p
 imap <C-U> <Esc>p<Esc>i
 
+" More bindings
+map <F3> :Explore<CR>
+
+" Netrw
+let g:netrw_altv = 1
+
 " Make backspace act normal
 set backspace=indent,eol,start
 
