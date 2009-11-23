@@ -44,7 +44,7 @@ map <C-U> <Esc>p
 imap <C-U> <Esc>p<Esc>i
 
 " More bindings
-map <F3> :Explore<CR>
+map <F3> :NERDTreeToggle<CR>
 
 " Netrw
 let g:netrw_altv = 1
