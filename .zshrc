@@ -6,14 +6,15 @@ export PYTHONSTARTUP="$HOME/.pythonrc"
 # Aliases
 alias mv='nocorrect mv' # no spelling correction on mv
 alias cp='nocorrect cp' # ~ on cp
+alias man='man -P most'
 alias mkdir='nocorrect mkdir' # ~ on on mkdir
 alias j=jobs
 alias pu=pushd
 alias po=popd
 alias d='dirs -v'
 alias h=history
-alias grep=egrep
-alias igrep=grep -i
+alias grep='egrep --color=auto'
+alias igrep='grep -i'
 alias ll='ls -l'
 alias la='ls -al'
 alias ls='ls --color=always'
