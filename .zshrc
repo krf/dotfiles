@@ -6,7 +6,7 @@ export PYTHONSTARTUP="$HOME/.pythonrc"
 # Aliases
 alias mv='nocorrect mv' # no spelling correction on mv
 alias cp='nocorrect cp' # ~ on cp
-alias man='man -P most'
+test -x /usr/bin/most && alias man='man -P most'
 alias mkdir='nocorrect mkdir' # ~ on on mkdir
 alias j=jobs
 alias pu=pushd
@@ -19,6 +19,7 @@ alias ll='ls -l'
 alias la='ls -al'
 alias ls='ls --color=always'
 alias netcat='nc'
+alias ..='cd ..'
 alias apt='sudo aptitude'
 #alias api='sudo aptitude install'
 alias api='sudo aptitude install'
