@@ -59,6 +59,9 @@ imap <Down> <Esc>gji
 " Make Shift-Tab work
 inoremap <S-Tab> <Esc><0<Esc>i
 
+" Keep column on buffer changing commands (line up, down)
+set nostartofline
+
 " Map a `svn blame` shortcut
 vmap gl :<C-U>!svn blame <C-R>=expand("%:p") <CR> \| sed -n <C-R>=line("'<") <CR>,<C-R>=line("'>") <CR>p <CR>
 
