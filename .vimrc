@@ -1,6 +1,11 @@
-" Vim5 and later versions support syntax highlighting. Uncommenting the next
-" line enables syntax highlighting by default.
-syntax on
+" {{{ Syntax highlighting settings
+" Switch syntax highlighting on, when the terminal has colors
+" Also switch on highlighting the last used search pattern.
+if &t_Co > 2 || has("gui_running")
+  syntax on
+  set hlsearch
+endif
+" }}}
 
 " If using a dark background within the editing area and syntax highlighting
 " turn on this option as well
