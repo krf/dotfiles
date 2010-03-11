@@ -73,10 +73,6 @@ let g:netrw_altv = 1
 " Make backspace act normal
 set backspace=indent,eol,start
 
-" Noremap up/down keys (Omnicompletion blocks them)
-imap <Up> <Esc>gki
-imap <Down> <Esc>gji
-
 " Make Shift-Tab work
 inoremap <S-Tab> <Esc><0<Esc>i
 
