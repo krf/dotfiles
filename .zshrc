@@ -66,9 +66,14 @@ bindkey "\e[F" end-of-line
 bindkey '^i' expand-or-complete-prefix
 ##
 
-# Sources
+# Private sources
 if [ -f "$HOME/.zshrc-private" ]; then
     source ~/.zshrc-private
+fi
+
+# Other sources
+if [ -f "/etc/zsh_command_not_found" ]; then
+    source /etc/zsh_command_not_found
 fi
 
 PATH="$PATH:$HOME/bin"
@@ -135,16 +140,3 @@ zstyle ':completion:*:*:(^rm):*:*files' ignored-patterns '*?.o' '*?.c~' \
 # ignore completion functions (until the _ignored completer)
 zstyle ':completion:*:functions' ignored-patterns '_*'
 
-
-# if the command-not-found package is installed, use it
-if [ -x /usr/lib/command-not-found ]; then
-        function command_not_found_handle {
-                # check because c-n-f could've been removed in the meantime
-                if [ -x /usr/lib/command-not-found ]; then
-                   /usr/bin/python /usr/lib/command-not-found -- $1
-                   return $?
-                else
-                   return 127
-                fi
-        }
-fi
