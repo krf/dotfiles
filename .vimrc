@@ -52,6 +52,13 @@ set ignorecase		" Do case insensitive matching
 "set hidden             " Hide buffers when they are abandoned
 "set mouse=a		" Enable mouse usage (all modes) in terminals
 
+" Fix PgUp/PgDown, see
+" http://vimrc-dissection.blogspot.com/2009/02/fixing-pageup-and-pagedown.html
+noremap <silent> <PageUp> 1000<C-U>
+noremap <silent> <PageDown> 1000<C-D>
+inoremap <silent> <PageUp> <C-O>1000<C-U>
+inoremap <silent> <PageDown> <C-O>1000<C-D>
+
 " Make vim act a bit like nano
 map <C-O> <Esc>:w<CR>
 "imap <C-O> <Esc>:w<CR>
