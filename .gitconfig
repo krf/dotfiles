@@ -1,0 +1,12 @@
+[user]
+    email = krf@electrostorm.net
+    name = Kevin Funk
+
+[alias]
+    l = log --graph \
+        --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' \
+        --abbrev-commit --date=relative
+    b = checkout -b
+    i = rebase -i HEAD~10
+    r = pull --rebase
+    s = status -uno
