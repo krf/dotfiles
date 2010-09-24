@@ -3,15 +3,15 @@
 import os, sys
 
 def get_old_kernel_versions(runningKernel):
-    oldKernels = []
+    oldKernelVersions = []
     for kernel in os.popen("ls /boot/vmlinuz*").readlines():
         kernel = kernel.replace("/boot/vmlinuz-", "").replace("-generic", "").strip()
         if kernel == runningKernel:
-            continue # do not add running kernel
+           continue # do not add running kernel
 
         if kernel:
-            oldKernels.append(kernel)
-    return oldKernels
+            oldKernelVersions.append(kernel)
+    return oldKernelVersions
 
 def get_packages_from_kernel_versions(kernels):
     packages = []
@@ -30,13 +30,15 @@ def main():
     runningKernel = get_running_kernel_version()
     print("Current kernel: {0}".format(runningKernel))
 
-    if len(get_old_kernel_versions(runningKernel)) > 0:
-        if len(get_packages_from_kernel_versions(oldKernels)) > 0:
-            cmd = "sudo aptitude purge -P {1}".format(" ".join(packages))
+    oldKernelVersions = get_old_kernel_versions(runningKernel)
+    if len(oldKernelVersions) > 0:
+        packages = get_packages_from_kernel_versions(oldKernelVersions)
+        if len(packages) > 0:
+            cmd = ["sudo", "aptitude", "purge", "-P"]
+            cmd += packages
             
-            print("Executing '{0}'".format(cmd))
-            os.popen(cmd)
-            sys.exit(0)
+            print("Executing '{0}'".format(" ".join(cmd)))
+            os.execvp(cmd[0], cmd[0:])
         else:
             print("Old kernels but no packages found. Exit.")
             sys.exit(1)
