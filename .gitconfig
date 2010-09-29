@@ -2,11 +2,32 @@
     email = krf@electrostorm.net
     name = Kevin Funk
 
+[color]
+    diff = auto
+    status = auto
+    branch = auto
+    interactive = auto
+    ui = true
+    pager = true
+
+[diff]
+    tool = vimdiff
+    guitool = kdiff3
+
 [alias]
     l = log --graph \
-        --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' \
+        --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
         --abbrev-commit --date=relative
     b = checkout -b
     i = rebase -i HEAD~10
     r = pull --rebase
     s = status -uno
+
+    pushall = !git remote | xargs -n1 git push
+    pushalltags = !git remote | xargs -n1 git push --tags
+
+    edit-last-commit = !vim `git diff-tree -r --name-only HEAD HEAD~1`
+    edit-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; vim `f`"
+    add-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; git add `f`"
+
+# more: http://www.jukie.net/~bart/conf/gitconfig
