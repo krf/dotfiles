@@ -157,3 +157,25 @@ autocmd BufRead *.py set makeprg=python\ -c\ \"import\ py_compile,sys;\ sys.stde
 
 " Colorscheme
 colorscheme ansi_blows
+
+" Move cursor by display line when wrapping.
+" See: http://vim.wikia.com/wiki/Move_cursor_by_display_lines_when_wrapping
+nnoremap j gj
+nnoremap k gk
+vnoremap j gj
+vnoremap k gk
+nnoremap <Down> gj
+nnoremap <Up> gk
+nnoremap <Home> g<Home>
+nnoremap <End> g<End>
+vnoremap <Down> gj
+vnoremap <Up> gk
+vnoremap <Home> g<Home>
+vnoremap <End> g<End>
+inoremap <Down> <C-o>gj
+inoremap <Up> <C-o>gk
+inoremap <Home> <C-o>g<Home>
+inoremap <End> <C-o>g<End>
+
+" wrap words
+set wrap lbr
