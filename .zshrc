@@ -14,6 +14,7 @@ alias pu=pushd
 alias po=popd
 alias d='dirs -v'
 alias h=history
+alias help=run-help
 alias grep='egrep --color=auto'
 alias igrep='grep -i'
 alias ll='ls -l'
