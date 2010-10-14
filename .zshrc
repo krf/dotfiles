@@ -36,6 +36,11 @@ alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g
 # Aliases for Vim
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
+# History settings
+HISTSIZE=1000 # Set command search history
+HISTFILE=~/.zsh_history
+SAVEHIST=100
+
 # Override keymap selection
 bindkey -e
 
@@ -93,6 +98,9 @@ PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
 RPROMPT="%{$fg[white]%}%T%{${reset_color}%}" # prompt for right side of screen
+
+# Emulate tcsh's backward-delete-word
+local WORDCHARS="${WORDCHARS:s#/#}"
 
 # Autoload scripts in .zsh.d
 setopt extended_glob
