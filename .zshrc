@@ -3,6 +3,7 @@ export EDITOR="vim" # Set default editor
 export TZ="/usr/share/zoneinfo/Europe/Berlin" # Set timezone
 export LC_MESSAGES=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
+export KDE_COLOR_DEBUG=1
 
 # Aliases
 alias mv='nocorrect mv' # no spelling correction on mv
