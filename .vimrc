@@ -41,6 +41,9 @@ if has("autocmd")
   filetype indent on
 endif
 
+" Colorscheme
+colorscheme ansi_blows
+
 " The following are commented out as they cause vim to behave a lot
 " differently from regular Vi. They are highly recommended though.
 set showcmd		" Show (partial) command in status line.
@@ -154,9 +157,6 @@ autocmd BufRead *.java set makeprg=javac\ %
 autocmd BufRead *.java map <F10> :make
 autocmd BufRead *.py set makeprg=python\ -c\ \"import\ py_compile,sys;\ sys.stderr=sys.stdout;\ py_compile.compile(r'%')\"
  autocmd BufRead *.py set efm=%C\ %.%#,%A\ \ File\ \"%f\"\\,\ line\ %l%.%#,%Z%[%^\ ]%\\@=%m
-
-" Colorscheme
-colorscheme ansi_blows
 
 " Move cursor by display line when wrapping.
 " See: http://vim.wikia.com/wiki/Move_cursor_by_display_lines_when_wrapping
