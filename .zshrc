@@ -81,7 +81,7 @@ if [ -f "/etc/zsh_command_not_found" ]; then
     source /etc/zsh_command_not_found
 fi
 
-PATH="$PATH:$HOME/bin"
+PATH="$HOME/bin:$PATH"
 
 # Prompt
 autoload colors zsh/terminfo
