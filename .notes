@@ -1,2 +1,2 @@
 # Sed magic examples
-perl -e 's/from core.plugins.reporters.XmlReport import XmlReport/from core.helpers.XmlReport import XmlReport/g;' -pi.save $(find . -name "*py")
+perl -e 's/str1/str2/g;' -pi.save $(find . -name "*py")
