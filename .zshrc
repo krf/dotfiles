@@ -18,6 +18,7 @@ alias h=history
 alias help=run-help
 alias grep='egrep --color=auto'
 alias igrep='grep -i'
+test -x /usr/share/vim/vim72/macros/less.sh && alias less='/usr/share/vim/vim72/macros/less.sh'
 alias ll='ls -l'
 alias la='ls -al'
 alias ls='ls --color=always'
