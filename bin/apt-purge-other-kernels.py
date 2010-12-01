@@ -16,13 +16,17 @@ def get_old_kernel_versions(runningKernel):
 def get_packages_from_kernel_versions(kernels):
     packages = []
     for kernel in kernels:
-        cmd = "dpkg --get-selections *{0}*".format(kernel)
+        # remove suffixes like "-generic-pae" from 2.6.35-23-generic-pae
+        version = '-'.join(kernel.split('-')[:2])
+
+        # build packages list
+        cmd = "dpkg --get-selections *{0}*".format(version)
         for package in os.popen(cmd).readlines():
             package = package.split("\t")[0]
             packages.append(package)
 
     return packages
-    
+
 def get_running_kernel_version():
     return os.popen("uname -r").read().replace("-generic","").strip()
 
@@ -36,11 +40,11 @@ def main():
         if len(packages) > 0:
             cmd = ["sudo", "aptitude", "purge", "-P"]
             cmd += packages
-            
+
             print("Executing '{0}'".format(" ".join(cmd)))
             os.execvp(cmd[0], cmd[0:])
         else:
-            print("Old kernels but no packages found. Exit.")
+            print("Old kernels found but no packages matched. Exit.")
             sys.exit(1)
     else:
         print("No old kernels found. Exit.")
