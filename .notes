@@ -1,2 +1,5 @@
 # Sed magic examples
 perl -e 's/str1/str2/g;' -pi.save $(find . -name "*py")
+
+# Qt compile
+../../src/qt/configure -prefix $KDEDIR -shared -debug && make -j3 sub-src && make -j3 install
