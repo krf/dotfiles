@@ -2,6 +2,9 @@
     email = krf@electrostorm.net
     name = Kevin Funk
 
+[push]
+    default = current
+
 [color]
     diff = auto
     status = auto
