@@ -33,7 +33,6 @@
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
 # URL rewrites
-[url "git://anongit.kde.org/"]
-    insteadOf = kde://
 [url "ssh://git@git.kde.org/"]
+    insteadOf = kde://
     pushInsteadOf = kde://
