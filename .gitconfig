@@ -13,6 +13,9 @@
     ui = true
     pager = true
 
+[apply]
+    whitespace = fix
+
 [diff]
     tool = vimdiff
     guitool = kdiff3
