@@ -144,7 +144,7 @@ zstyle '*' hosts $hosts
 
 # Filename suffixes to ignore during completion (except after rm command)
 zstyle ':completion:*:*:(^rm):*:*files' ignored-patterns '*?.o' '*?.c~' \
-    '*?.old' '*?.pro'
+    '*?.old'
 # the same for old style completion
 #fignore=(.o .c~ .old .pro)
 
