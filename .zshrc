@@ -39,6 +39,11 @@ alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g
 # Aliases for Vim
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
+# Functions
+function mkcd() {
+  [ -n "$1" ] && mkdir -p "$@" && cd "$1";
+}
+
 # History settings
 HISTSIZE=1000 # Set command search history
 HISTFILE=~/.zsh_history
