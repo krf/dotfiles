@@ -1,6 +1,6 @@
 # Sed magic examples
-perl -e 's/str1/str2/g;' -pi $(find . -name "*py")
-perl -e 's/str1/str2/g;' -pi.save $(find . -name "*py") # with backup files
+perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*py")
+perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
 
 # Qt compile
-../../src/qt/configure -prefix $PWD -shared -debug -opensource -confirm-license && make -j15 sub-src
+../../src/qt/configure -prefix $PWD -shared -debug -opensource -confirm-license && make -j3 sub-src
