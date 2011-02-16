@@ -9,11 +9,25 @@ for i in ./*; do
     test -d "$i" || continue
 
     echo "*** Checking ${i}... ***"
+
     # update repository depending on VCS used
     test -x "$i/.svn" &&
         svn up "$i"
-    test -x "$i/.git" &&
-        (cd "$i"; git fetch; cd "$PWD")
+    test -x "$i/.git" && (
+        cd "$i"
+        git fetch
+        cd "$PWD"
+    )
+    test -x "$i/CVS" && (
+        cd "$i"
+        cvs up
+        cd "$PWD"
+    )
+    test -x "$i/.hg" && (
+        cd "$i"
+        hg update
+        cd "$PWD"
+    )
 done
 
 cd $CWD
