@@ -38,8 +38,14 @@
 
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
-# URL rewrites
+# URL alias for KDE
 [url "git://anongit.kde.org/"]
     insteadOf = kde://
 [url "ssh://git@git.kde.org/"]
     pushInsteadOf = kde://
+
+# URL rewrites
+[url "git@github.com:"]
+    pushInsteadOf = git://github.com/
+[url "git@gitorious.org:"]
+    pushInsteadOf = git://gitorious.org/
