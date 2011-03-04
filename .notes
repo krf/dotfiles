@@ -1,7 +1,20 @@
-# Sed magic examples
+### Sed magic examples
 perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*py")
 perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
 perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
 
-# Qt compile
+### Qt compile
 ../../src/qt/configure -prefix $PWD -shared -debug -opensource -confirm-license && make -j3 sub-src
+
+### Git magic
+# Fix committer emails for recent (unpushed) commits
+git filter-branch --env-filter '
+  if [ "$GIT_AUTHOR_EMAIL" = "krf@electrostorm.net" ];
+  then
+      export GIT_AUTHOR_EMAIL="kevin.funk@kdab.com";
+  fi
+  if [ "$GIT_COMMITTER_EMAIL" = "krf@electrostorm.net" ];
+  then
+      export GIT_COMMITTER_EMAIL="kevin.funk@kdab.com";
+  fi
+  ' HEAD~15..HEAD
