@@ -21,21 +21,23 @@
     guitool = kdiff3
 
 [alias]
+    b = checkout -b
     d = !git diff --exit-code
+    f = fetch --all
+    i = rebase -i HEAD~10
     l = log --graph \
         --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
         --abbrev-commit --date=relative
-    b = checkout -b
-    i = rebase -i HEAD~10
     r = pull --rebase
     s = status -uno
 
     pushall = !git remote | xargs -n1 git push
     pushalltags = !git remote | xargs -n1 git push --tags
 
-    edit-last-commit = !vim `git diff-tree -r --name-only HEAD HEAD~1`
-    edit-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; vim `f`"
     add-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; git add `f`"
+    edit-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; vim `f`"
+
+    edit-last-commit = !vim `git diff-tree -r --name-only HEAD HEAD~1`
 
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
