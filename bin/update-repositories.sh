@@ -15,7 +15,7 @@ for i in ./*; do
         svn up "$i"
     test -x "$i/.git" && (
         cd "$i"
-        git fetch
+        git fetch --all
         cd "$PWD"
     )
     test -x "$i/CVS" && (
