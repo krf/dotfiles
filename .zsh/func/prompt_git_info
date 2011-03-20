@@ -15,6 +15,9 @@ if [ -n "$__CURRENT_GIT_BRANCH" ]; then
 		s+="↓"
 		;;
 	esac
+	if [ -n "$__CURRENT_GIT_BRANCH_STATUS_AMOUNT" ]; then
+		s+="$__CURRENT_GIT_BRANCH_STATUS_AMOUNT"
+	fi
 	if [ -n "$__CURRENT_GIT_BRANCH_IS_DIRTY" ]; then
 		s+="⚡"
 	fi
