@@ -91,13 +91,30 @@ fi
 
 PATH="$HOME/bin:$PATH"
 
-# Prompt
+# Load functions from .zsh/func
+fpath=($fpath $HOME/.zsh/func)
+autoload -U $HOME/.zsh/func/*(:t)
+
+# Enable auto-execution of functions.
+typeset -ga preexec_functions
+typeset -ga precmd_functions
+typeset -ga chpwd_functions
+
+# Append git functions needed for prompt.
+preexec_functions+='preexec_update_git_vars'
+precmd_functions+='precmd_update_git_vars'
+chpwd_functions+='chpwd_update_git_vars'
+
+# Configure prompt
 autoload colors zsh/terminfo
 colors
 autoload -U promptinit
 promptinit
 setopt promptsubst
+
+# Set prompt
 local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
+local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info)%b%{${fg[default]}%}'
 
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
@@ -105,7 +122,7 @@ PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
  %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah --color=never | grep total | tr -d total\ )'"%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
-RPROMPT="%{$fg[white]%}%T%{${reset_color}%}" # prompt for right side of screen
+RPROMPT="%{$fg[white]%}${gitprompt} %T%{${reset_color}%}" # prompt for right side of screen
 
 # Emulate tcsh's backward-delete-word
 local WORDCHARS="${WORDCHARS:s#/#}"
