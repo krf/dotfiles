@@ -21,7 +21,7 @@ if [ -n "$__CURRENT_GIT_BRANCH" ]; then
 	s+=")"
  
 	if [ $VERBOSE = 1 ] && [ -n "$__CURRENT_GIT_BRANCH_MERGE" ]; then
-		printf " %s^%s" $s $__CURRENT_GIT_BRANCH_REMOTE
+		printf " %s→%s" $s $__CURRENT_GIT_BRANCH_REMOTE
 	else
 		printf " %s" $s
 	fi
