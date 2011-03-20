@@ -2,6 +2,9 @@ unset __CURRENT_GIT_BRANCH
 unset __CURRENT_GIT_BRANCH_STATUS
 unset __CURRENT_GIT_BRANCH_IS_DIRTY
 
+unset __CURRENT_GIT_BRANCH_REMOTE
+unset __CURRENT_GIT_BRANCH_MERGE
+
 local st="$(git status -uno 2>/dev/null)"
 if [[ -n "$st" ]]; then
 	local -a arr
@@ -26,4 +29,8 @@ if [[ -n "$st" ]]; then
 	if [[ ! $st =~ 'nothing to commit' ]]; then
 		__CURRENT_GIT_BRANCH_IS_DIRTY='1'
 	fi
+
+	# branch info
+	__CURRENT_GIT_BRANCH_REMOTE="$(git config branch.${__CURRENT_GIT_BRANCH}.remote)"
+	__CURRENT_GIT_BRANCH_MERGE="$(git config branch.${__CURRENT_GIT_BRANCH}.merge  | sed 's,refs/heads/,,')"
 fi

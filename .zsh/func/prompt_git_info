@@ -1,3 +1,6 @@
+# Adjustable constants
+local VERBOSE=1
+
 if [ -n "$__CURRENT_GIT_BRANCH" ]; then
 	local s="("
 	s+="$__CURRENT_GIT_BRANCH"
@@ -17,5 +20,9 @@ if [ -n "$__CURRENT_GIT_BRANCH" ]; then
 	fi
 	s+=")"
  
-	printf " %s" $s
+	if [ $VERBOSE = 1 ] && [ -n "$__CURRENT_GIT_BRANCH_MERGE" ]; then
+		printf " %s^%s" $s $__CURRENT_GIT_BRANCH_REMOTE
+	else
+		printf " %s" $s
+	fi
 fi
