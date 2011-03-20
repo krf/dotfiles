@@ -22,6 +22,7 @@
 
 [alias]
     b = checkout -b
+    c = checkout
     d = !git diff --exit-code
     f = fetch --all
     i = rebase -i HEAD~10
