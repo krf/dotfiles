@@ -32,6 +32,7 @@ alias apt='sudo aptitude'
 alias apu='sudo aptitude update; sudo aptitude full-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
+alias getdbussession='export `cat /proc/$(pidof kded4)/environ | tr '\0' '\n' | grep DBUS_SESSION_BUS`'
 alias kdevelop-remove-locks='rm ~/.kde/share/apps/kdevelop/sessions/*/lock'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
 alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g'"
