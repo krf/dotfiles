@@ -5,7 +5,8 @@ perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name 
 perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regextype posix-egrep -regex ".+cpp|.+h|.+ui")
 
 ### Qt compile
-../../src/qt/configure -prefix $PWD -shared -debug -opensource -confirm-license && make -j3 sub-src
+time (../../src/qt/configure -prefix "$HOME/opt/`basename $PWD`" -shared -debug -opensource -confirm-license && make -j3 sub-src)
+time (../../src/qt/configure -prefix "$HOME/opt/`basename $PWD`" -shared -debug -opensource -confirm-license && make -j20 sub-src && make -j10 install)
 
 ### Git magic
 # Fix committer emails for recent (unpushed) commits
