@@ -36,6 +36,7 @@ alias getdbussession="export `cat /proc/$(pidof kded4)/environ | tr '\0' '\n' | 
 alias kdevelop-remove-locks='rm ~/.kde/share/apps/kdevelop/sessions/*/lock'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
 alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g'"
+alias bandwidth-test="wget http://ftp.uni-kl.de/pub/linux/ubuntu.iso/9.10/ubuntu-9.10-desktop-i386.iso --output-document=/dev/null"
 
 # Aliases for Vim
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
