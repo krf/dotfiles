@@ -175,12 +175,12 @@ function _cs()
     COMPREPLY=( $(compgen -W "${dirs}" -- ${cur}) )
 }
 
-if [ $CURRENT_SHELL = "bash" ]; then
-    complete -F _cs cs
-fi
-
-
 svndiff ()
 {
     svn diff "$*" | colordiff | less;
 }
+
+# Setup shell
+if [ "$CURRENT_SHELL" = "bash" ]; then
+    complete -F _cs cs
+fi
