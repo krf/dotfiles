@@ -5,7 +5,7 @@ export LC_MESSAGES=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
 
-# Aliases
+# Aliases (shortcuts)
 alias mv='nocorrect mv' # no spelling correction on mv
 alias cp='nocorrect cp' # ~ on cp
 #test -x /usr/bin/most && alias man='man -P most'
@@ -33,13 +33,18 @@ alias apu='sudo aptitude update; sudo aptitude full-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 alias getdbussession="export `cat /proc/$(pidof kded4)/environ | tr '\0' '\n' | grep DBUS_SESSION_BUS`"
+
+# Aliases (convenience)
 alias kdevelop-remove-locks='rm ~/.kde/share/apps/kdevelop/sessions/*/lock'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
 alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g'"
 alias bandwidth-test="wget http://ftp.uni-kl.de/pub/linux/ubuntu.iso/9.10/ubuntu-9.10-desktop-i386.iso --output-document=/dev/null"
 
-# Aliases for Vim
+# Aliases (Vim)
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
+
+# Aliases (development)
+alias env-devel='source ~/.bashrc_devel && cd ~/devel/src'
 
 # Functions
 function mkcd() {
