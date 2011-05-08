@@ -1,1 +1,2 @@
-source /home/krf/devel/build/kdevelop/debuggers/gdb/printers/gdbinit
+source ~/.gdb/printers/gdbinit
+source ~/.gdb/reverse_engineering
