@@ -55,7 +55,8 @@ function cmakekde {
 
         # Note: To speed up compiling, change 'make -j2' to 'make -jx',
         #   where x is your number of processors +1
-        nice make -j2 && make install
+        #nice make -j2 && make install
+        make -j2 install
         #Use this line instead if using icecream
         #nice make CC=icecc -j6 && make install
         RETURN=$?
