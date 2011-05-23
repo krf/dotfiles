@@ -46,7 +46,7 @@ function cmakekde {
     cmake "$srcFolder" \
           -DCMAKE_INSTALL_PREFIX=$KDEDIR \
           -DKDE4_BUILD_TESTS=TRUE \
-          -DCMAKE_BUILD_TYPE=debugfull
+          -DCMAKE_BUILD_TYPE=debug
 
         # Comment out the following two lines to stop builds waiting after
         # the configuration step, so that the user can check configure output
