@@ -44,7 +44,7 @@ alias bandwidth-test="wget http://ftp.uni-kl.de/pub/linux/ubuntu.iso/9.10/ubuntu
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
 # Aliases (development)
-alias env-devel='source ~/.bashrc_devel && cd ~/devel/src'
+alias env-devel='source ~/.bashrc_devel && cd ~/devel/src && source ~/.bashrc_devel'
 
 # Functions
 function mkcd() {
