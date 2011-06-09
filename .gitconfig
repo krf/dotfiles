@@ -20,6 +20,10 @@
     tool = vimdiff
     guitool = kdiff3
 
+[commit]
+    template = ~/.commit-template
+	status = on
+
 [alias]
     b = checkout -b
     c = checkout
