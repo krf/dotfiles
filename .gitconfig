@@ -29,7 +29,8 @@
     c = checkout
     d = !git diff --exit-code
     f = fetch --all
-    i = rebase -i HEAD~10
+    i = rebase -i HEAD~3
+    i10 = rebase -i HEAD~10
     l = log --graph \
         --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
         --abbrev-commit --date=relative
