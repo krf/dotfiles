@@ -179,5 +179,8 @@ zstyle ':completion:*:*:(^rm):*:*files' ignored-patterns '*?.o' '*?.c~' \
 # ignore completion functions (until the _ignored completer)
 zstyle ':completion:*:functions' ignored-patterns '_*'
 
+# set virtual memory limit (avoid swapping for memory-greedy processes)
+ulimit -v 1000000
+
 # trigger chpwd functions
 cd $PWD
