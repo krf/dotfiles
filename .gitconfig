@@ -27,7 +27,7 @@
 [alias]
     b = checkout -b
     c = checkout
-    d = !git diff --exit-code
+    d = diff --exit-code
     f = fetch --all
     i = rebase -i HEAD~3
     i10 = rebase -i HEAD~10
@@ -37,6 +37,7 @@
     lo = log -u --stat
     r = pull --rebase
     s = status -uno
+    up = !git fetch --all && git stash && git pull --rebase && git stash pop
 
     pushall = !git remote | xargs -n1 git push
     pushalltags = !git remote | xargs -n1 git push --tags
