@@ -6,6 +6,11 @@ unset __CURRENT_GIT_BRANCH_IS_DIRTY
 unset __CURRENT_GIT_BRANCH_REMOTE
 unset __CURRENT_GIT_BRANCH_MERGE
 
+# optimization: do not run in ~
+if [[ "$PWD" = "$HOME" ]]; then
+    return
+fi
+
 local st="$(git status -uno 2>/dev/null)"
 if [[ -n "$st" ]]; then
 	local -a arr
