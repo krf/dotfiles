@@ -107,9 +107,9 @@ typeset -ga precmd_functions
 typeset -ga chpwd_functions
 
 # Append git functions needed for prompt.
-preexec_functions+='preexec_update_git_vars'
-precmd_functions+='precmd_update_git_vars'
-chpwd_functions+='chpwd_update_git_vars'
+preexec_functions+='preexec_update_git_vars.sh'
+precmd_functions+='precmd_update_git_vars.sh'
+chpwd_functions+='chpwd_update_git_vars.sh'
 
 # Configure prompt
 autoload colors zsh/terminfo
@@ -120,7 +120,7 @@ setopt promptsubst
 
 # Set prompt
 local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
-local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info)%b%{${fg[default]}%}'
+local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info.sh)%b%{${fg[default]}%}'
 
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
