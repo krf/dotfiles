@@ -7,7 +7,7 @@ unset __CURRENT_GIT_BRANCH_REMOTE
 unset __CURRENT_GIT_BRANCH_MERGE
 
 # optimization: do not run in ~
-GIT_ROOT=$(git rev-parse --show-toplevel)
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 if [[ "$GIT_ROOT" = "$HOME" ]]; then
     return
 fi
