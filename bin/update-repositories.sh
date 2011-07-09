@@ -15,43 +15,43 @@
 #     ${THIS_DIR}/qtrepotools/bin/qt5_tool -p
 #
 
-local CWD=$PWD
+# update current working directory
+update_pwd()
+{
+    # call update script if there is any
+    test -x ".update-procedure.sh" &&
+        ./.update-procedure.sh
+
+    # update repository depending on VCS used
+    test -x ".svn" &&
+        svn up
+    test -x ".git" &&
+        git fetch --all
+    test -x "CVS" &&
+        cvs up
+    test -x ".hg" &&
+        hg update
+}
+
+# start of main routine
+local INITIAL_PWD=$PWD
 
 echo "*** Fetching new objects from repositories ***"
 
+# check each subdirectory for version control systems
 for i in ./*; do
     # continue if $i is no directory
     test -d "$i" || continue
 
     echo "*** Checking ${i}... ***"
 
-    # call update script if there is any
-    test -x "$i/.update-procedure.sh" && (
-        cd "$i"
-        ./.update-procedure.sh
-        cd "$PWD"
-    )
-
-    # update repository depending on VCS used
-    test -x "$i/.svn" &&
-        svn up "$i"
-    test -x "$i/.git" && (
-        cd "$i"
-        git fetch --all
-        cd "$PWD"
-    )
-    test -x "$i/CVS" && (
-        cd "$i"
-        cvs up
-        cd "$PWD"
-    )
-    test -x "$i/.hg" && (
-        cd "$i"
-        hg update
-        cd "$PWD"
-    )
+    # enter directory, update, reset cwd
+    cd "$i"
+    update_pwd
+    cd "$INITIAL_PWD"
 done
 
-cd $CWD
+# be sure to return to saved CWD
+cd "$INITIAL_PWD"
 
 echo "*** Done fetching new objects ***"
