@@ -4,7 +4,7 @@
 # Supported types: CVS, SVN, Git, HG
 #
 # Additional script support for: $PWD/*/.update-procedure.sh
-#   This script (if existant) will called directly
+#   This script (if existant) will be called directly
 #
 #   Example script (placed in Qt5 repository)
 #     $ cat qt5/.update-procedure.sh
