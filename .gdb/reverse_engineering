@@ -1,4 +1,4 @@
-# http://community.reverse-engineering.net/viewtopic.php?f=35&t=1325
+# http://dotfiles.org/~rndm_luser/.gdbinit
 
 set auto-solib-add off
 set confirm off
