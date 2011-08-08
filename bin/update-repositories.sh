@@ -1,6 +1,8 @@
 #!/bin/sh
 #
 # This will update all repositories in $PWD/* (no recursive)
+# If $PWD already contains a repository, only this is updated
+#
 # Supported types: CVS, SVN, Git, HG
 #
 # Additional script support for: $PWD/*/.update-procedure.sh
@@ -20,38 +22,55 @@ update_pwd()
 {
     # call update script if there is any
     test -x ".update-procedure.sh" &&
-        ./.update-procedure.sh
+        ./.update-procedure.sh && return 0
 
     # update repository depending on VCS used
     test -x ".svn" &&
-        svn up
+        svn up && return 0
     test -x ".git" &&
-        git fetch --all
+        git fetch --all && return 0
     test -x "CVS" &&
-        cvs up
+        cvs up && return 0
     test -x ".hg" &&
-        hg update
+        hg update && return 0
+
+    return 1
+}
+
+# check each subdirectory for version control systems
+check_subdirectories()
+{
+    local INITIAL_PWD="$PWD"
+    for i in ./*; do
+        # continue if $i is no directory
+        test -d "$i" || continue
+
+        echo "*** Checking ${i}... ***"
+
+        # enter directory, update, reset cwd
+        cd "$i"
+        update_pwd
+        cd "$INITIAL_PWD"
+    done
 }
 
 # start of main routine
-local INITIAL_PWD=$PWD
+local INITIAL_PWD="$PWD"
 
 echo "*** Fetching new objects from repositories ***"
 
-# check each subdirectory for version control systems
-for i in ./*; do
-    # continue if $i is no directory
-    test -d "$i" || continue
+# try to update cwd first
+update_pwd
 
-    echo "*** Checking ${i}... ***"
+# if current working directory has no repository, check subdirectories
+if [ $? -eq 1 ]; then
+    echo "*** Checking subdirectories ***"
+    check_subdirectories
+else
+    echo "*** Repository in CWD updated ***"""
+fi
 
-    # enter directory, update, reset cwd
-    cd "$i"
-    update_pwd
-    cd "$INITIAL_PWD"
-done
-
-# be sure to return to saved CWD
+# be sure to return to old CWD
 cd "$INITIAL_PWD"
 
 echo "*** Done fetching new objects ***"
