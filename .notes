@@ -8,6 +8,13 @@ perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regex
 time (../../src/qt/configure -prefix "$HOME/opt/`basename $PWD`" -shared -debug -opensource -confirm-license && make -j3 sub-src)
 time (../../src/qt/configure -prefix "$HOME/opt/`basename $PWD`" -shared -debug -opensource -confirm-license && make -j20 sub-src && make -j10 install)
 
+### Aptitude
+Searches and pattern matching in Aptitude is different:
+You basically want to use a '~' character to start the pattern
+- searching for a pattern in the name of the package (~n<regex>)
+- or in the description (~d<regex>) and so on.
+Example: aptitude -s install "~n.*qc-usb.*"
+
 ### Git magic
 # Fix committer emails for recent (unpushed) commits
 git filter-branch --env-filter '
