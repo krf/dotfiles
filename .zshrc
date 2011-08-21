@@ -24,6 +24,7 @@ alias la='ls -al'
 alias ls='ls --color=always'
 alias netcat='nc'
 alias ..='cd ..'
+if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
 alias api='sudo aptitude install'
 alias apr='sudo aptitude remove'
 alias app='sudo aptitude purge'
