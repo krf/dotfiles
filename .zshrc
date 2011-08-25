@@ -16,11 +16,13 @@ alias po=popd
 alias d='dirs -v'
 alias h=history
 alias help=run-help
-alias grep='egrep --color=auto'
+# check if grep supports --color
+if echo "" | egrep --color=auto; alias grep='egrep --color=auto'
 alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
 alias ll='ls -l'
 alias la='ls -al'
+# check if ls supports --color
 if ls --color=always $HOME > /dev/null 2>&1; then alias ls='ls --color=always'; fi
 alias netcat='nc'
 alias ..='cd ..'
