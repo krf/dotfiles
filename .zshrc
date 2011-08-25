@@ -5,6 +5,8 @@ export LC_MESSAGES=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
 
+export HAVE_BUSYBOX=$(cat --help | grep -qv "BusyBox"; echo $?)
+
 # Aliases (shortcuts)
 alias mv='nocorrect mv' # no spelling correction on mv
 alias cp='nocorrect cp' # ~ on cp
@@ -17,13 +19,13 @@ alias d='dirs -v'
 alias h=history
 alias help=run-help
 # check if grep supports --color
-if echo "" | egrep --color=auto; alias grep='egrep --color=auto'
+if [ "$HAVE_BUSYBOX" = "0" ]; then alias grep='grep --color=always'; fi
 alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
 alias ll='ls -l'
 alias la='ls -al'
 # check if ls supports --color
-if ls --color=always $HOME > /dev/null 2>&1; then alias ls='ls --color=always'; fi
+if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=always'; fi
 alias netcat='nc'
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
@@ -125,10 +127,15 @@ setopt promptsubst
 local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
 local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info.sh)%b%{${fg[default]}%}'
 
+if [ "$HAVE_BUSYBOX" = "1" ]; then
+    export PROMPT_GREP_ARGS=""
+else
+    export PROMPT_GREP_ARGS="--color=never"
+fi
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
  %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
- %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah | grep total | tr -d total\ )'"%{${reset_color}%}\
+ %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah | grep $PROMPT_GREP_ARGS total | tr -d total\ )'"%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
 RPROMPT="%{$fg[white]%}${gitprompt} %T%{${reset_color}%}" # prompt for right side of screen
