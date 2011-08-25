@@ -5,7 +5,7 @@ export LC_MESSAGES=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
 
-export HAVE_BUSYBOX=$(cat --help | grep -qv "BusyBox"; echo $?)
+export HAVE_BUSYBOX=$(cat --help  | grep -qv BusyBox 2>/dev/null; echo $?)
 
 # Aliases (shortcuts)
 alias mv='nocorrect mv' # no spelling correction on mv
