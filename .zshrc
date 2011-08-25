@@ -21,7 +21,7 @@ alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
 alias ll='ls -l'
 alias la='ls -al'
-alias ls='ls --color=always'
+if ls --color=always $HOME > /dev/null 2>&1; then alias ls='ls --color=always'; fi
 alias netcat='nc'
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
@@ -126,7 +126,7 @@ local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info.sh)%b%{${fg[default]}%}'
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
  %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
- %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah --color=never | grep total | tr -d total\ )'"%{${reset_color}%}\
+ %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah | grep total | tr -d total\ )'"%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
 RPROMPT="%{$fg[white]%}${gitprompt} %T%{${reset_color}%}" # prompt for right side of screen
