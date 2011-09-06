@@ -1,2 +1,2 @@
 #!/bin/sh
-qdbus org.kde.kded /modules/powerdevil suspend 1
+qdbus org.kde.kded /org/freedesktop/PowerManagement Suspend
