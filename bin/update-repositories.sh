@@ -1,20 +1,35 @@
 #!/bin/sh
 #
-# This will update all repositories in $PWD/* (no recursive)
-# If $PWD already contains a repository, only this is updated
+# This will update all repositories in $PWD/* (non-recursive)
+# If $PWD already contains a repository, only this is updated.
+# Recursive-mode can be simulated easily, see script support.
 #
-# Supported types: CVS, SVN, Git, HG
+# Usage:
+#   $ cd path/to/src/ # should contain various repositories in sub-folders
+#   $ update-repositories.sh # will automatically update all repositories
 #
-# Additional script support for: $PWD/*/.update-procedure.sh
-#   This script (if existant) will be called directly
+# Supported repository types:
+#   * CVS
+#   * SVN
+#   * Git
+#   * Git-SVN
+#   * HG
 #
-#   Example script (placed in Qt5 repository)
+# Script support
+#   Additional script support for the following files: $PWD/*/.update-procedure.sh
+#   These scripts (if existant) will be called instead of using the VCS tools.
+#
+#   Example script (placed in Qt5 repository):
 #     $ cat qt5/.update-procedure.sh
 #
 #     #!/bin/sh
+#     ./qtrepotools/bin/qt5_tool -p
 #
-#     THIS_DIR="$(cd $(dirname $0) && pwd)"
-#     ${THIS_DIR}/qtrepotools/bin/qt5_tool -p
+#   Example script if you want to do recursive updating:
+#     $ cat other-sources/.update-procedure.sh
+#
+#     #!/bin/sh
+#     update-repositories.sh # invoke calling script again
 #
 
 # update current working directory
@@ -22,11 +37,14 @@ update_pwd()
 {
     # call update script if there is any
     test -x ".update-procedure.sh" &&
-        ./.update-procedure.sh && return 0
+        echo "Calling $PWD/.update-procedure.sh" &&
+        $PWD/.update-procedure.sh && return 0
 
     # update repository depending on VCS used
     test -x ".svn" &&
         svn up && return 0
+    test -x ".git/svn" &&
+        git svn fetch && return 0
     test -x ".git" &&
         git fetch --all && return 0
     test -x "CVS" &&
@@ -45,7 +63,7 @@ check_subdirectories()
         # continue if $i is no directory
         test -d "$i" || continue
 
-        echo "*** Checking ${i}... ***"
+        echo "*** Checking ${i} ***"
 
         # enter directory, update, reset cwd
         cd "$i"
