@@ -73,7 +73,7 @@ function cd() {
   else
     builtin cd "$1" "$2"
   fi
-  _f=`findup .build-config`
+  _f=`findup .build-config.sh`
   if test -n "$_f" -a "$_lastf" != "$_f"; then
     echo "Loading $_f"
     _lastf="$_f"
