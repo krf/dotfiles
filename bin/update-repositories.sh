@@ -43,10 +43,16 @@ update_pwd()
     # update repository depending on VCS used
     test -x ".svn" &&
         svn up && return 0
-    test -x ".git/svn" &&
-        git svn fetch && return 0
     test -x ".git" &&
-        git fetch --all && return 0
+        if git svn info 2> /dev/null; then
+            # Git-SVN fetch
+            git svn fetch
+            return 0
+        else
+            # Default Git fetch
+            git fetch --all
+            return 0
+        fi
     test -x "CVS" &&
         cvs up && return 0
     test -x ".hg" &&
