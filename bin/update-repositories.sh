@@ -65,10 +65,7 @@ update_pwd()
 check_subdirectories()
 {
     local INITIAL_PWD="$PWD"
-    for i in ./*; do
-        # continue if $i is no directory
-        test -d "$i" || continue
-
+    for i in ./*/; do
         echo "*** Checking ${i} ***"
 
         # enter directory, update, reset cwd
