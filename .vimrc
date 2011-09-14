@@ -113,12 +113,13 @@ set pastetoggle=<F11>
 highlight PmenuSel ctermbg=6
 highlight LineNr cterm=bold
 
-" Highlight whitespaces at EOL
-highlight WhitespaceEOL ctermbg=darkgreen guibg=darkgreen
-match WhitespaceEOL /\s\+$/
-
-" Compile current file
-map <F9> :make<CR>
+" Highlight whitespace
+if has("multi_byte")
+set encoding=utf-8
+set list listchars=tab:»·,trail:·
+else
+set list listchars=tab:>-,trail:.
+endif
 
 " Omnicppcomplete
 set nocp
