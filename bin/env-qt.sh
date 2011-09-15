@@ -31,10 +31,11 @@ function __env-qt_main() {
         return
     fi
 
-    echo "Setting environment..."
+    echo "Setting environment."
     export QTDIR
     export PATH=$QTDIR/bin:$PATH
     export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
+    echo "Done."
 }
 
 __env-qt_main $*
