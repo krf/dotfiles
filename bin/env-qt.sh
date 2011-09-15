@@ -1,31 +1,42 @@
 #!/bin/bash
 
-# Adjust environment for Qt
+# Adjust environment for Qt. Needs to be sourced, e.g. 'source FILE'
 
-function show_usage() {
+PATHNAME="$_"
+
+function __env-qt_show_usage() {
     echo "Usage: $0 path/to/qt/ - ensure that this contains bin/qmake!"
 }
 
-if [ -z "$1" ]; then
-    show_usage
-    echo
-    echo "Error: Invalid parameters"
-    exit 1
-fi
+function __env-qt_main() {
+    if [ "$PATHNAME" = "$0" ]; then
+        echo "Do not run this script directly, source it!"
+        return
+    fi
 
-QTDIR="$1"
+    if [ -z "$1" ]; then
+        __env-qt_show_usage
+        echo
+        echo "Error: Invalid parameters"
+        return
+    fi
 
-echo "Trying to find Qt's qmake..."
-if "$QTDIR/bin/qmake" --version; then
-    echo "Qt found."
-else
-    echo "Error: Qt not found in $QTDIR."
-    exit 1
-fi
+    QTDIR="$1"
 
+    echo "Trying to find Qt's qmake..."
+    if "$QTDIR/bin/qmake" --version; then
+        echo "Qt found."
+    else
+        echo "Error: Qt not found in $QTDIR."
+        return
+    fi
 
-echo "Setting environment..."
-set -x
-export QTDIR
-export PATH=$QTDIR/bin:$PATH
-export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
+    echo "Setting environment..."
+    export QTDIR
+    export PATH=$QTDIR/bin:$PATH
+    export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
+}
+
+__env-qt_main $*
+unset -f __env-qt_show_usage
+unset -f __env-qt_main
