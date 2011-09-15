@@ -4,6 +4,7 @@ export TZ="/usr/share/zoneinfo/Europe/Berlin" # Set timezone
 export LC_MESSAGES=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
+export VALGRIND_OPTS="--trace-children=yes --track-origins=yes --suppressions=$HOME/.valgrind-suppressions --leak-check=full --num-callers=20"
 
 export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $? )
 
