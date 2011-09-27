@@ -1,7 +1,7 @@
 # http://dotfiles.org/~rndm_luser/.gdbinit
 
 set auto-solib-add off
-set confirm off
+#set confirm off
 set verbose off
 #set prompt \033[1mgdb> \033[0m
 set prompt gdb>
