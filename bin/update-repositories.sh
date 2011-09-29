@@ -75,23 +75,28 @@ check_subdirectories()
     done
 }
 
+main()
+{
+    local INITIAL_PWD="$PWD"
+
+    echo "*** Fetching new objects from repositories ***"
+
+    # try to update cwd first
+    update_pwd
+
+    # if current working directory has no repository, check subdirectories
+    if [ $? -eq 1 ]; then
+        echo "*** Checking subdirectories ***"
+        check_subdirectories
+    else
+        echo "*** Repository in CWD updated ***"""
+    fi
+
+    # be sure to return to old CWD
+    cd "$INITIAL_PWD"
+
+    echo "*** Done fetching new objects ***"
+}
+
 # start of main routine
-local INITIAL_PWD="$PWD"
-
-echo "*** Fetching new objects from repositories ***"
-
-# try to update cwd first
-update_pwd
-
-# if current working directory has no repository, check subdirectories
-if [ $? -eq 1 ]; then
-    echo "*** Checking subdirectories ***"
-    check_subdirectories
-else
-    echo "*** Repository in CWD updated ***"""
-fi
-
-# be sure to return to old CWD
-cd "$INITIAL_PWD"
-
-echo "*** Done fetching new objects ***"
+main
