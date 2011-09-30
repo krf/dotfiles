@@ -13,7 +13,6 @@ alias mv='nocorrect mv' # no spelling correction on mv
 alias cp='nocorrect cp' # ~ on cp
 test -x /usr/bin/most && alias man='man -P most'
 alias mkdir='nocorrect mkdir' # ~ on on mkdir
-alias j=jobs
 alias pu=pushd
 alias po=popd
 alias d='dirs -v'
@@ -102,6 +101,11 @@ if [ -f "/etc/zsh_command_not_found" ]; then
 fi
 
 PATH="$HOME/bin:$PATH"
+
+# Load autojump
+if [ -f "/usr/share/autojump/autojump.zsh" ]; then
+    source /usr/share/autojump/autojump.zsh
+fi
 
 # Load functions from .zsh/func
 fpath=($fpath $HOME/.zsh/func)
