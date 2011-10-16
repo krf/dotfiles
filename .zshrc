@@ -4,7 +4,11 @@ export TZ="/usr/share/zoneinfo/Europe/Berlin" # Set timezone
 export LC_MESSAGES=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
-export VALGRIND_OPTS="--trace-children=yes --track-origins=yes --suppressions=$HOME/.valgrind-suppressions --leak-check=full --num-callers=20"
+export VALGRIND_OPTS="--trace-children=yes --track-origins=yes \
+    --suppressions=$HOME/.valgrind/default.supp \
+    --suppressions=$HOME/.valgrind/other.supp \
+    --suppressions=$HOME/.valgrind/generated.supp \
+    --leak-check=full --num-callers=20"
 
 export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $? )
 
@@ -39,7 +43,7 @@ alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 
 # Aliases (convenience)
-alias kdevelop-remove-locks='rm ~/.kde/share/apps/kdevelop/sessions/*/lock'
+alias kdevelop-remove-locks='rm $KDEHOME/share/apps/kdevelop/sessions/*/lock'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
 alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g'"
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"

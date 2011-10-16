@@ -1,0 +1,74 @@
+# edit this if needed
+
+{
+   libfontconfig.so.1.4.4
+   Memcheck:Addr4
+   obj:/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.4.4
+   ...
+   fun:FcInit
+}
+
+{
+   libfontconfig.so.1.4.4_1
+   Memcheck:Addr4
+   obj:/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.4.4
+   ...
+   fun:FcConfigFilename
+}
+
+# fglrx_dri.so, Ubuntu oneiric
+{
+   fglrx_dri.so
+   Memcheck:Param
+   ioctl(generic)
+   fun:ioctl
+   fun:ukiCreateContext
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+   obj:*
+   obj:*
+   obj:*
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+}
+
+{
+   fglrx_dri.so_cond
+   Memcheck:Cond
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+}
+
+{
+   fglrx_dri.so
+   Memcheck:Addr8
+   fun:memcpy
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+}
+
+{
+   fglrx_dri.so_memcpy
+   Memcheck:Addr1
+   fun:memcpy
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+}
+
+{
+   fglrx_dri.so_addr1
+   Memcheck:Addr1
+   fun:memcpy
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+   obj:*
+}
+
+{
+   fglrx_dri.so_param
+   Memcheck:Param
+   ioctl(generic)
+   fun:ioctl
+   obj:/usr/lib/fglrx/dri/fglrx_dri.so
+   obj:*
+}
