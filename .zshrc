@@ -56,7 +56,11 @@ alias env-devel='source ~/.bashrc_devel && cd ~/devel/src && source ~/.bashrc_de
 
 # Functions
 function mkcd() {
-  [ -n "$1" ] && mkdir -p "$@" && cd "$1";
+    [ -n "$1" ] && mkdir -p "$@" && cd "$1";
+}
+function env-neon()
+{
+    . /opt/project-neon/share/project-neon/environment.rc
 }
 
 # History settings
