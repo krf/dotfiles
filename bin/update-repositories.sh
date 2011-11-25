@@ -38,7 +38,9 @@ update_pwd()
     # call update script if there is any
     test -x ".update-procedure.sh" &&
         echo "Calling $PWD/.update-procedure.sh" &&
-        $PWD/.update-procedure.sh && return 0
+        $PWD/.update-procedure.sh &&
+        echo "Done." &&
+        return 0
 
     # update repository depending on VCS used
     test -x ".svn" &&
@@ -81,16 +83,9 @@ main()
 
     echo "*** Fetching new objects from repositories ***"
 
-    # try to update cwd first
-    update_pwd
-
     # if current working directory has no repository, check subdirectories
-    if [ $? -eq 1 ]; then
-        echo "*** Checking subdirectories ***"
-        check_subdirectories
-    else
-        echo "*** Repository in CWD updated ***"""
-    fi
+    echo "*** Checking subdirectories ***"
+    check_subdirectories
 
     # be sure to return to old CWD
     cd "$INITIAL_PWD"
