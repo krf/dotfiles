@@ -7,7 +7,7 @@
 # user directory using your system Qt
 
 # Set up make
-export MAKE_JOBS=$(cat /proc/cpuinfo | grep processor | wc -l)
+export MAKEFLAGS="$MAKEFLAGS $(cat /proc/cpuinfo | grep processor | wc -l)"
 
 # Uncomment if building on a 64 bit system
 #export LIB_SUFFIX=64
