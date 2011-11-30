@@ -42,6 +42,9 @@ alias apu='sudo aptitude update; sudo aptitude full-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 
+# Aliases (make tools in /sbin available)
+if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
+
 # Aliases (convenience)
 alias kdevelop-remove-locks='rm $KDEHOME/share/apps/kdevelop/sessions/*/lock'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
