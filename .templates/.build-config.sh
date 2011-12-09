@@ -7,7 +7,7 @@
 # user directory using your system Qt
 
 # Set up make
-export MAKEFLAGS="$MAKEFLAGS $(cat /proc/cpuinfo | grep processor | wc -l)"
+export MAKEFLAGS="-j$(cat /proc/cpuinfo | grep processor | wc -l) $MAKEFLAGS"
 
 # Uncomment if building on a 64 bit system
 #export LIB_SUFFIX=64
@@ -39,7 +39,7 @@ mkdir -p $KDETMP
 mkdir -p $KDEVARTMP
 
 # Add the KDE plugins to the Qt plugins path
-export QT_PLUGIN_PATH=$KDEDIR/lib/kde4/plugins
+export QT_PLUGIN_PATH=$KDEDIR/lib/kde4/plugins:$QT_PLUGIN_PATH
 
 # Do we really need these?
 export KDE4_DBUS_INTERFACES_DIR=$KDEDIR/share/dbus-1/interfaces
@@ -71,5 +71,5 @@ echo "QTDIR=$QTDIR"
 echo "KDEDIR=$KDEDIR"
 echo "PATH=$PATH"
 echo
-echo "MAKE_JOBS=$MAKE_JOBS"
+echo "MAKEFLAGS=$MAKEFLAGS"
 echo
