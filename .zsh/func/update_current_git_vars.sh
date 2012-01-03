@@ -13,8 +13,19 @@ if [[ "$?" -ne "0" ]]; then
     return
 fi
 
-# fill generic git variables
-local branch="$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')"
+# performance bottle-neck, calls git status internally
+local diff_files="$(git diff-files --exit-code)"
+if [[ -n "$diff_files" ]]; then
+    __CURRENT_GIT_BRANCH_IS_DIRTY='1'
+fi
+
+__CURRENT_GIT_BRANCH="$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')"
+if [[ -z "$__CURRENT_GIT_BRANCH" || "$__CURRENT_GIT_BRANCH" == "(no branch)" ]]; then
+    __CURRENT_GIT_BRANCH="[no branch]"
+    return
+fi
+
+# check branch status, compare to remote
 local ref="$(git symbolic-ref HEAD)"
 local head="${ref#refs/heads/}"
 local remote="$(git config branch.$head.remote)"
@@ -33,12 +44,6 @@ if [[ -n "$head_to_upstream" ]]; then
     head_to_upstream_diff="$(echo $head_to_upstream | wc -l)"
 fi
 
-if [[ -n "$branch" ]]; then
-    __CURRENT_GIT_BRANCH="$branch"
-else
-    __CURRENT_GIT_BRANCH='[no-branch]'
-fi
-
 __CURRENT_GIT_BRANCH_REMOTE="$remote"
 __CURRENT_GIT_BRANCH_MERGE="$merge"
 
@@ -54,10 +59,4 @@ elif [[ -n "$head_to_upstream_diff" ]]; then
 else
     __CURRENT_GIT_BRANCH_STATUS_AMOUNT=""
     __CURRENT_GIT_BRANCH_STATUS='clean'
-fi
-
-# performance bottle-neck, calls git status internally
-local diff_files="$(git diff-files --exit-code)"
-if [[ -n "$diff_files" ]]; then
-    __CURRENT_GIT_BRANCH_IS_DIRTY='1'
 fi
