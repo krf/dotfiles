@@ -4,9 +4,10 @@ unset __CURRENT_GIT_BRANCH
 unset __CURRENT_GIT_BRANCH_STATUS
 unset __CURRENT_GIT_BRANCH_STATUS_AMOUNT
 unset __CURRENT_GIT_BRANCH_IS_DIRTY
-
 unset __CURRENT_GIT_BRANCH_REMOTE
 unset __CURRENT_GIT_BRANCH_MERGE
+
+unset __CURRENT_GIT_TAG
 
 __CURRENT_GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [[ "$?" -ne "0" ]]; then
@@ -19,9 +20,10 @@ if [[ -n "$diff_files" ]]; then
     __CURRENT_GIT_BRANCH_IS_DIRTY='1'
 fi
 
-__CURRENT_GIT_BRANCH="$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')"
-if [[ -z "$__CURRENT_GIT_BRANCH" || "$__CURRENT_GIT_BRANCH" == "(no branch)" ]]; then
-    __CURRENT_GIT_BRANCH="[no branch]"
+__CURRENT_GIT_TAG="$(git describe 2>/dev/null | sed -e 's/-[^-]*$//' )"
+
+local branch="$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')"
+if [[ -z "$branch" || "$branch" == "(no branch)" ]]; then
     return
 fi
 
@@ -44,6 +46,7 @@ if [[ -n "$head_to_upstream" ]]; then
     head_to_upstream_diff="$(echo $head_to_upstream | wc -l)"
 fi
 
+__CURRENT_GIT_BRANCH="$branch"
 __CURRENT_GIT_BRANCH_REMOTE="$remote"
 __CURRENT_GIT_BRANCH_MERGE="$merge"
 
