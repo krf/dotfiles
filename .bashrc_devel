@@ -41,11 +41,9 @@ function cmakekde {
     if [ "$srcFolder" = "$current" ]; then
         cb
     fi
-    # To disable tests, remove -DKDE4_BUILD_TESTS=TRUE
     # To save disk space change "debugfull" to "debug"
     cmake "$srcFolder" \
           -DCMAKE_INSTALL_PREFIX=$KDEDIR \
-          -DKDE4_BUILD_TESTS=TRUE \
           -DCMAKE_BUILD_TYPE=debug
 
         # Comment out the following two lines to stop builds waiting after
