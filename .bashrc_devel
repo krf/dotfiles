@@ -44,7 +44,7 @@ function cmakekde {
     # To save disk space change "debugfull" to "debug"
     cmake "$srcFolder" \
           -DCMAKE_INSTALL_PREFIX=$KDEDIR \
-          -DCMAKE_BUILD_TYPE=debug
+          -DCMAKE_BUILD_TYPE=Debug
 
         # Comment out the following two lines to stop builds waiting after
         # the configuration step, so that the user can check configure output
