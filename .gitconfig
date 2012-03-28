@@ -56,6 +56,8 @@
     insteadOf = kde://
 [url "ssh://git@git.kde.org/"]
     pushInsteadOf = kde://
+    pushInsteadOf = git://anongit.kde.org/
+    pushInsteadOf = git://anongit1.kde.org/
 
 # URL rewrites
 [url "git@github.com:"]
