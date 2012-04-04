@@ -5,19 +5,19 @@
 PATHNAME="$_"
 
 function __env-qt_show_usage() {
-    echo "Usage: $0 path/to/qt/ - ensure that this contains bin/qmake!"
+    echo "Usage: source $0 path/to/qt/ - ensure that this contains bin/qmake!"
 }
 
 function __env-qt_main() {
-    if [ "$PATHNAME" = "$0" ]; then
-        echo "Do not run this script directly, source it!"
-        return
-    fi
-
     if [ -z "$1" ]; then
         __env-qt_show_usage
         echo
         echo "Error: Invalid parameters"
+        return
+    fi
+
+    if [ "$PATHNAME" = "$0" ]; then
+        echo "Do not run this script directly, source it!"
         return
     fi
 
