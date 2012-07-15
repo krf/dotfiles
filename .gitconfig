@@ -64,3 +64,5 @@
     pushInsteadOf = git://github.com/
 [url "git@gitorious.org:"]
     pushInsteadOf = git://gitorious.org/
+[rebase]
+    stat = true
