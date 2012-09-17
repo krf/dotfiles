@@ -55,7 +55,7 @@ alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
 # Aliases (development)
-alias env-devel='source ~/.bashrc_devel && cd ~/devel/src && source ~/.bashrc_devel'
+alias env-devel='cd ~/devel/src && source ~/.bashrc_devel'
 
 # Functions
 function mkcd() {

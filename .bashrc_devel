@@ -183,3 +183,6 @@ svndiff ()
 if [ "$CURRENT_SHELL" = "bash" ]; then
     complete -F _cs cs
 fi
+
+# trigger function
+cd $PWD
