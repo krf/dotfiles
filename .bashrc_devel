@@ -76,6 +76,9 @@ function cd() {
     echo "Loading $_f"
     _lastf="$_f"
     source "$_f"
+
+    # renew makeobj sed
+    export OBJ_REPLACEMENT="s#$KDE_SRC#$KDE_BUILD#"
   fi
 }
 
