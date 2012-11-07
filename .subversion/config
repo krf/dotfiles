@@ -19,6 +19,7 @@
 # store-auth-creds = no
 
 ### Section for configuring external helper applications.
+password-stores =
 [helpers]
 ### Set editor to the command used to invoke your text editor.
 ###   This will override the environment variables that Subversion
