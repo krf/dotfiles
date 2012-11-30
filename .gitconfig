@@ -22,7 +22,7 @@
 
 [commit]
     template = ~/.commit-template
-	status = on
+    status = on
 
 [alias]
     b = checkout -b
