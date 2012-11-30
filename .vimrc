@@ -1,4 +1,4 @@
-" {{{ Syntax highlighting settings
+﻿" {{{ Syntax highlighting settings
 " Switch syntax highlighting on, when the terminal has colors
 " Also switch on highlighting the last used search pattern.
 if &t_Co > 2 || has("gui_running")
@@ -116,6 +116,11 @@ highlight LineNr cterm=bold
 " Highlight whitespaces at EOL
 highlight WhitespaceEOL ctermbg=darkgreen guibg=darkgreen
 match WhitespaceEOL /\s\+$/
+
+set list listchars=tab:>-,trail:.,extends:>
+
+highlight RedundantWhitespace ctermbg=red guibg=red
+match RedundantWhitespace /\s\+$\| \+\ze\t/
 
 " Compile current file
 map <F9> :make<CR>
