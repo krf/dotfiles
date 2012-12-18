@@ -6,7 +6,7 @@ perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regex
 
 ### Qt compile
 # normal
-time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -fast -no-qt3support -opensource -confirm-license && make sub-src)
+time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -fast -no-phonon -no-qt3support -opensource -confirm-license && make sub-src)
 # extended
 time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -webkit -xmlpatterns -scripttools -fast -plugin-sql-mysql -plugin-sql-psql -plugin-sql-sqlite -exceptions -qt3support -developer-build -opensource -confirm-license && make && make install)
 
