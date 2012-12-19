@@ -58,6 +58,11 @@ update_pwd()
             git svn fetch
             return 0
         else
+            # also fetch objects in submodules if there are any
+            if test -f .gitmodules; then
+                git submodule foreach --recursive git fetch --all
+            fi
+
             # Default Git fetch
             git fetch --all
             return 0
