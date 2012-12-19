@@ -1,8 +1,15 @@
 #!/bin/sh
 #
-# This will update all repositories in $PWD/* (non-recursive)
-# If $PWD already contains a repository, only this is updated.
-# Recursive-mode can be simulated easily, see script support.
+# ===================================================================
+#       Title: update-repositories.sh
+#   Copyright: Kevin Funk <kevin@kfunk.org>
+#     License: CC BY 2.0
+# ===================================================================
+#
+# Purpose:
+#   This will update all repositories in $PWD/* (non-recursive)
+#   If $PWD already contains a repository, only this is updated.
+#   Recursive-mode can be simulated easily, see script support.
 #
 # Usage:
 #   $ cd path/to/src/ # should contain various repositories in sub-folders
