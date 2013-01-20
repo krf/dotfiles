@@ -6,18 +6,20 @@ hash vcgencmd 2> /dev/null || {
     exit 1;
 }
 
-echo -e "\n###############################################"
+echo "###############################################"
 echo "#       RASPBERRY PI SYSTEM INFORMATIONS      #"
 echo "###############################################"
 
-echo -e "\nCPU current Frequency: `vcgencmd measure_clock arm`"
+echo
+echo "CPU current Frequency: `vcgencmd measure_clock arm`"
 echo "CORE current Frequency: `vcgencmd measure_clock core`"
 echo "CORE current Voltage: `vcgencmd measure_volts core`"
 echo "CPU current Temperature: `vcgencmd measure_temp`"
 
-echo -e "\nFirmware Version: `vcgencmd version`\n"
+echo
+echo "Firmware Version: `vcgencmd version`\n"
 
-echo -e "Codecs Status:"
+echo "Codecs Status:"
 echo "`vcgencmd codec_enabled H264`"
 echo "`vcgencmd codec_enabled MPG2`"
 echo "`vcgencmd codec_enabled WVC1`"
