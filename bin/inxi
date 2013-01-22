@@ -1,8 +1,8 @@
 #!/bin/bash
 ########################################################################
 ####  Script Name: inxi
-####  version: 1.8.26
-####  Date: December 22 2012
+####  version: 1.8.29
+####  Date: January 21 2013
 ####  Patch Number: 00
 ########################################################################
 ####  SPECIAL THANKS
@@ -20,7 +20,7 @@
 ####  Gaim/Pidgin, Weechat, KVIrc and Kopete.
 ####  Original infobash author and copyright holder:
 ####  Copyright (C) 2005-2007  Michiel de Boer a.k.a. locsmif
-####  inxi version: Copyright (C) 2008-12 Scott Rogers & Harald Hope
+####  inxi version: Copyright (C) 2008-2013 Scott Rogers & Harald Hope
 ####  Further fixes (listed as known): Horst Tritremmel <hjt at sidux.com>
 ####  Steven Barrett (aka: damentz) - usb audio patch; swap percent used patch
 ####  Jarett.Stevens - dmidecde -M patch for older systems with the /sys 
@@ -145,6 +145,7 @@
 ####	Because webpages come and go, the above information needs to be moved to inxi's wiki
 ########################################################################
 ####  Valuable Resources
+####  CPU flags: http://unix.stackexchange.com/questions/43539/what-do-the-flags-in-proc-cpuinfo-mean
 ####  gawk arrays: http://www.math.utah.edu/docs/info/gawk_12.html
 ####  raid mdstat: http://www-01.ibm.com/support/docview.wss?uid=isg3T1011259
 ####               http://www.howtoforge.com/replacing_hard_disks_in_a_raid1_array
@@ -2153,6 +2154,9 @@ get_parameters()
 					14)
 						script_self_updater "$SCRIPT_DOWNLOAD_BRANCH_4" 'svn: branch four server'
 						;;
+					30)
+						B_RUNNING_IN_SHELL='true'
+						;;
 					ftp*)
 						ALTERNATE_FTP="$OPTARG"
 						;;
@@ -3076,15 +3080,32 @@ get_cpu_data()
 		# stop script for a bit to let cpu slow down before parsing cpu /proc file
 		sleep $CPU_SLEEP
 		IFS=$'\n'
-		A_CPU_DATA=( $( gawk -F': ' '
+		A_CPU_DATA=( $( 
+		gawk -F': ' '
 		BEGIN {
 			IGNORECASE=1
+			# need to prime nr for arm cpus, which do not have processor number output in some cases
+			nr = 0
+			count = 0
+			bArm = "false"
 		}
 		# TAKE STRONGER NOTE: \t+ does NOT always work, MUST be [ \t]+
 		# TAKE NOTE: \t+ will work for $FILE_CPUINFO, but SOME ARBITRARY FILE used for TESTING might contain SPACES!
 		# Therefore PATCH to use [ \t]+ when TESTING!
 		/^processor[ \t]+:/ {
-			nr = $NF
+			gsub(/,/, " ", $NF)
+			gsub(/^ +| +$/, "", $NF)
+			if ( $NF ~ "^[0-9]+$" ) {
+				nr = $NF
+			}
+			else {
+				if ( $NF ~ "^ARM" ) {
+					bArm = "true"
+				}
+				count += 1
+				nr = count - 1
+				cpu[nr, "model"] = $NF
+			}
 		}
 
 		/^model name|^cpu\t+:/ {
@@ -3118,7 +3139,7 @@ get_cpu_data()
 			cpu[nr, "cache"] = $NF
 		}
 
-		/^flags/ {
+		/^flags|^features/ {
 			cpu[nr, "flags"] = $NF
 		}
 
@@ -3134,25 +3155,33 @@ get_cpu_data()
 		END {
 			#if (!nr) { print ",,,"; exit } # <- should this be necessary or should bash handle that
 			for ( i = 0; i <= nr; i++ ) {
+				# note: assuming bogomips for arm at 1 x clock
+				# http://en.wikipedia.org/wiki/BogoMips ARM could change so watch this
+				if ( cpu[i, "bogomips"] != "" && cpu[i, "speed"] == "" ) {
+					cpu[i, "speed"] = cpu[i, "bogomips"]
+				}
 				print cpu[i, "model"] "," cpu[i, "speed"] "," cpu[i, "cache"] "," cpu[i, "flags"] "," cpu[i, "bogomips"] ","  cpu[nr, "vendor"]
 			}
 			if (!min) {
 				print "not found"
 				exit
 			}
-			if (min != max) {
-				printf("Min:%s%s Max:%s%s\n", min, "Mhz", max, "Mhz")
-			}
 			else {
-				printf("%s %s\n", max, "Mhz")
+				if (min != max) {
+					printf("Min:%s%s Max:%s%s\n", min, "Mhz", max, "Mhz")
+				}
+				else {
+					printf("%s %s\n", max, "Mhz")
+				}
 			}
-		}' $FILE_CPUINFO ) )
+		}
+ 		' $FILE_CPUINFO ) )
 		log_function_data 'cat' "$FILE_CPUINFO"
 	fi
 	IFS="$ORIGINAL_IFS"
 	temp_array=${A_CPU_DATA[@]}
 	log_function_data "A_CPU_DATA: $temp_array"
-	
+# 	echo ta: ${temp_array[@]}
 	eval $LOGFE
 # 	echo getMainCpu: ${[@]}
 }
@@ -3179,10 +3208,27 @@ get_cpu_ht_multicore_smp_data()
 			cpu_id[0]
 			type = "-"
 			iter = 0
+			# needed to handle arm cpu, no processor number cases
+			count = 0
+			nr = 0
+			bArm = "false"
 		}
 		# array of logical processors, both HT and physical
 		/^processor/ {
-			processor_id[iter] = $NF
+			gsub(/,/, " ", $NF)
+			gsub(/^ +| +$/, "", $NF)
+			if ( $NF ~ "^[0-9]+$" ) {
+				processor_id[iter] = $NF
+			}
+			else {
+				if ( $NF ~ "^ARM" ) {
+					bArm = "true"
+				}
+				count += 1
+				nr = count - 1
+				processor_id[iter] = nr
+			}
+			
 		}
 		# array of physical cpus ids
 		/^physical/ {
@@ -3268,8 +3314,7 @@ get_cpu_ht_multicore_smp_data()
 			
 			print type " " num_of_cpus " " num_of_cores
 		}
-		' $FILE_CPUINFO 
-		) )
+		' $FILE_CPUINFO ) )
 	fi
 	temp_array=${A_CPU_TYPE_PCNT_CCNT[@]}
 	log_function_data "A_CPU_TYPE_PCNT_CCNT: $temp_array"
@@ -3438,6 +3483,21 @@ get_desktop_environment()
 			elif [[ -n $( grep -is '^I3_' <<< "$xprop_root" ) ]];then
 				version=$( get_de_app_version 'i3' '^i3' '3' )
 				desktop_environment='i3'
+			elif [[ -n $( grep -is 'WINDOWMAKER' <<< "$xprop_root" ) ]];then
+				version=$( get_de_app_version 'wmaker' '^Window[[:space:]]*Maker' 'NF' )
+				if [[ -n $version ]];then
+					version="$version "
+				fi
+				desktop_environment="WindowMaker"
+			elif [[ -n $( grep -is '^_WM2' <<< "$xprop_root" ) ]];then
+				# note; there isn't actually a wm2 version available but error handling should cover it and return null
+				# maybe one day they will add it?
+				version=$( get_de_app_version 'wm2' '^wm2' 'NF' )
+				# not certain will always have version, so keep output right if not
+				if [[ -n $version ]];then
+					version="$version "
+				fi
+				desktop_environment="WM2"
 			fi
 		fi
 		# a few manual hacks for things that don't id with xprop, these are just good guesses
@@ -3463,6 +3523,10 @@ get_desktop_environment()
 			elif [[ -n $( grep -Eis '([[:space:]]|/)dwm' <<< "$ps_aux" | grep -v 'grep' ) ]];then
 				version=$( get_de_app_version 'dwm' '^dwm' '1' )
 				desktop_environment='dwm'
+			elif [[ -n $( grep -is 'wmii2' <<< "$ps_aux" | grep -v 'grep' ) ]];then
+				version=$( get_de_app_version 'wmii2' '^wmii2' '1' )
+				desktop_environment='wmii2'
+			# note: in debian at least, wmii is actuall wmii3
 			elif [[ -n $( grep -is 'wmii' <<< "$ps_aux" | grep -v 'grep' ) ]];then
 				version=$( get_de_app_version 'wmii' '^wmii' '1' )
 				desktop_environment='wmii'
@@ -3487,7 +3551,7 @@ get_de_app_version()
 	
 	# mate-about -v = MATE Desktop Environment 1.4.0
 	case $1 in
-		dwm|jwm|mate-about|wmii)
+		dwm|jwm|mate-about|wmii|wmii2)
 			get_version='-v'
 			;;
 	esac
@@ -3516,7 +3580,7 @@ get_de_app_version()
 		/'$2'/ {
 			# sample: dwm-5.8.2, ©.. etc, why no space? who knows. Also get rid of v in number string
 			# xfce, and other, output has , in it, so dump all commas
-			gsub(/(,|dwm-|wmii-|v|V)/, "",$'$3') 
+			gsub(/(,|dwm-|wmii2-|wmii-|v|V)/, "",$'$3') 
 			print $'$3'
 			exit # quit after first match prints
 		}' <<< "$version_data" )
@@ -4520,7 +4584,8 @@ get_hard_drive_data_advanced()
 	## then we'll loop through that array looking for matches.
 	if [[ -n $( grep -E 'sd[a-z]' <<< ${A_HDD_DATA[@]} ) ]];then
 		# first pack the main ls variable so we don't have to keep using ls /dev...
-		ls_disk_by_id="$( ls -l /dev/disk/by-id )"
+		# not all systems have /dev/disk/by-id
+		ls_disk_by_id="$( ls -l /dev/disk/by-id 2>/dev/null )"
 		for (( i=0; i < ${#A_HDD_DATA[@]} - 1; i++ ))
 		do
 			if [[ -n $( grep -E '^sd[a-z]' <<< ${A_HDD_DATA[$i]} ) ]];then
@@ -6750,7 +6815,7 @@ process_cpu_flags()
 		i = 1 # start at one because of for increment issue
 		flag_string = ""
 	}
-	/^(lm|nx|pni|svm|vmx|(sss|ss)e([2-9])?([a-z])?(_[0-9])?)$/ {
+	/^(lm|nx|pae|pni|svm|vmx|(sss|ss)e([2-9])?([a-z])?(_[0-9])?)$/ {
 		if ( $0 == "pni" ){
 			a_flags[i] = "sse3"
 		}
@@ -7132,6 +7197,7 @@ print_cpu_data()
 		fi
 		# only print shortened list
 		if [[ $B_CPU_FLAGS_FULL != 'true' ]];then
+			# gawk has already sorted this output
 			cpu_flags=$( process_cpu_flags "${a_cpu_working[3]}" )
 			cpu_flags=" ${C1}flags$SEP3${C2} ($cpu_flags)"
 		fi
@@ -7178,18 +7244,26 @@ print_cpu_data()
 print_cpu_flags_full()
 {
 	eval $LOGFS
-	local cpu_flags_full="$1" a_cpu_flags='' line_starter=''
-	local i=0 counter=0 max_length=18 max_length_add=18 flag='' flag_data=''
+	# note: sort only sorts lines, not words in a string, so convert to lines
+	local cpu_flags_full="$( echo $1 | tr " " "\n" | sort )" 
+	local a_cpu_flags='' line_starter=''
+	local i=0 counter=0 max_length=85 max_length_minus=15 flag='' flag_data=''
+	local line_length_max=''
+	
 
 	# build the flag line array
 	for flag in $cpu_flags_full
 	do
 		a_cpu_flags[$counter]="${a_cpu_flags[$counter]}$flag "
-		if [[ $i -ge $max_length ]];then
-			(( counter++ ))
-			max_length=$(( $max_length + $max_length_add ))
+		if [[ $counter -eq 0 ]];then
+			line_length_max=$(( $max_length - $max_length_minus ))
+		else
+			line_length_max=$max_length
 		fi
-		((i++))
+		
+		if [[ $( wc -c <<< ${a_cpu_flags[$counter]} ) -gt $line_length_max ]];then
+			(( counter++ ))
+		fi
 	done
 	# then print it out
 	for (( i=0; i < ${#a_cpu_flags[@]};i++ ))
