@@ -34,6 +34,7 @@ function __env-qt_main() {
     echo "Setting environment."
     export QTDIR
     export PATH=$QTDIR/bin:$PATH
+    export QT_PLUGIN_PATH=$QTDIR/plugins:$QT_PLUGIN_PATH
     export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
     echo "Done."
 }
