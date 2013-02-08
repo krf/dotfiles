@@ -49,7 +49,7 @@
 
     edit-last-commit = !vim `git diff-tree -r --name-only HEAD HEAD~1`
 
-    post-review = !post-review --guess-summary --guess-description \
+    post-review = !post-review -o --guess-summary --guess-description \
         --parent=origin/master --tracking-branch=anonupstream/master
 
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
