@@ -29,6 +29,7 @@ alias la='ls -al'
 # check if ls supports --color
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=always'; fi
 alias netcat='nc'
+alias fnd="find . -iname"
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
 alias api='sudo aptitude install'
