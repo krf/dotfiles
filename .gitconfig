@@ -17,7 +17,7 @@
     whitespace = fix
 
 [diff]
-    tool = vimdiff
+	tool = kompare
     guitool = kdiff3
 
 [commit]
