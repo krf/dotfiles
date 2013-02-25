@@ -28,6 +28,7 @@
 	b = checkout -b
 	c = checkout
 	d = diff --exit-code
+	dt = difftool --dir-diff
 	f = fetch --all
 	i = rebase -i HEAD~3
 	i10 = rebase -i HEAD~10
