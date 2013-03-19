@@ -20,11 +20,11 @@ Example: aptitude -s install "~n.*qc-usb.*"
 ### Git magic
 # Fix committer emails for recent (unpushed) commits
 git filter-branch --env-filter '
-  if [ "$GIT_AUTHOR_EMAIL" = "krf@electrostorm.net" ];
+  if [ "$GIT_AUTHOR_EMAIL" = "kevin@kfunk.org" ];
   then
       export GIT_AUTHOR_EMAIL="kevin.funk@kdab.com";
   fi
-  if [ "$GIT_COMMITTER_EMAIL" = "krf@electrostorm.net" ];
+  if [ "$GIT_COMMITTER_EMAIL" = "kevin@kfunk.org" ];
   then
       export GIT_COMMITTER_EMAIL="kevin.funk@kdab.com";
   fi
