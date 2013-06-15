@@ -4,3 +4,4 @@ source ~/.gdb/printers/gdbinit
 
 # init
 set disassembly-flavor intel
+set unwindonsignal on
