@@ -22,7 +22,7 @@ for file in $FILES; do
     fi
 
     if [ -d "$file" ]; then
-        unrar e -o- $dir/*.rar
+        unrar e -o- $file/*.rar
     fi
 done
 
