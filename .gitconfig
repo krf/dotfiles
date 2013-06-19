@@ -20,6 +20,9 @@
 	tool = kompare
 	guitool = kdiff3
 
+[diff "odf"]
+	textconv=odt2txt
+
 [commit]
 	template = ~/.commit-template
 	status = on
