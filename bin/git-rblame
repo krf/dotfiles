@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Source: http://git.661346.n2.nabble.com/how-to-track-the-history-of-a-line-in-a-file-td2103332.html
+# Note: modified, fixed issues with /bin/sh
+
+PARAMS="$*"
+LINE=$(git blame $PARAMS)
+while test $? == 0
+do
+    echo "$LINE"
+    COMMIT="${LINE:0:8}"
+    LINE=$(git blame $PARAMS "$COMMIT^" 2>/dev/null)
+done
