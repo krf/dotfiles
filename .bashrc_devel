@@ -28,13 +28,9 @@ alias make=makeobj
 #   will build/rebuild the sources in ~/src/KDE/kdebase
 #
 function cmakekde {
-    if test -n "$1"; then
-        # srcFolder is defined via command line argument
-        srcFolder="$1"
-    else
-        # get srcFolder for current dir
-        srcFolder=`pwd | sed -e s,$KDE_BUILD,$KDE_SRC,`
-    fi
+    # get srcFolder for current dir
+    srcFolder=`pwd | sed -e s,$KDE_BUILD,$KDE_SRC,`
+
     # we are in the src folder, change to build directory
     # Alternatively, we could just use makeobj in the commands below...
     current=`pwd`
@@ -44,7 +40,7 @@ function cmakekde {
     # To save disk space change "debugfull" to "debug"
     cmake "$srcFolder" \
           -DCMAKE_INSTALL_PREFIX=$KDEDIR \
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=Debug $*
 
         # Comment out the following two lines to stop builds waiting after
         # the configuration step, so that the user can check configure output
