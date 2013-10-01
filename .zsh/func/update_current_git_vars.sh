@@ -28,7 +28,7 @@ if [[ -z "$branch" || "$branch" == "(no branch)" ]]; then
 fi
 
 # check branch status, compare to remote
-local ref="$(git symbolic-ref HEAD)"
+local ref="$(git symbolic-ref HEAD 2>/dev/null)"
 local head="${ref#refs/heads/}"
 local remote="$(git config branch.$head.remote)"
 local merge="$(git config branch.$head.merge)"
