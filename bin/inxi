@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 ########################################################################
 ####  Script Name: inxi
-####  Version: 1.9.7
-####  Date: May 25 2013
+####  Version: 1.9.16
+####  Date: 2013-10-06
 ####  Patch Number: 00
 ########################################################################
 ####  SPECIAL THANKS
@@ -544,12 +544,12 @@ CN=''
 ### Distro Data
 # In cases of derived distros where the version file of the base distro can also be found under /etc,
 # the derived distro's version file should go first. (Such as with Sabayon / Gentoo)
-DISTROS_DERIVED="antix-version aptosid-version kanotix-version knoppix-version mandrake-release pardus-release sabayon-release siduction-version sidux-version turbolinux-release zenwalk-version"
+DISTROS_DERIVED="antix-version aptosid-version kanotix-version knoppix-version mandrake-release pardus-release sabayon-release siduction-version sidux-version solusos-release turbolinux-release zenwalk-version"
 # debian_version excluded from DISTROS_PRIMARY so Debian can fall through to /etc/issue detection. Same goes for Ubuntu.
 DISTROS_EXCLUDE_LIST="debian_version ubuntu_version"
 DISTROS_PRIMARY="arch-release gentoo-release redhat-release slackware-version SuSE-release"
 DISTROS_LSB_GOOD="mandrake-release mandriva-release mandrakelinux-release"
-# this is being used both by core distros and derived distros now, eg, solusos uses it for solusos id, while
+# this is being used both by core distros and derived distros now, eg, solusos 1 uses it for solusos id, while
 # debian, solusos base, uses it as well, so we have to know which it is.
 DISTROS_OS_RELEASE_GOOD="arch-release SuSE-release"
 ## Distros with known problems
@@ -567,7 +567,7 @@ SENSORS_GPU_SEARCH='intel|radeon|nouveau'
 ### USB networking search string data, because some brands can have other products than
 ### wifi/nic cards, they need further identifiers, with wildcards.
 ### putting the most common and likely first, then the less common, then some specifics
-USB_NETWORK_SEARCH="Wi-Fi.*Adapter|Wireless.*Adapter|WLAN.*Adapter|Network.*Adapter|802\.11|Atheros|Atmel|D-Link.*Adapter|D-Link.*Wireless|Linksys|Netgea|Ralink|Realtek.*Network|Realtek.*Wireless|Realtek.*WLAN|Belkin.*Wireless|Belkin.*WLAN|Belkin.*Network"
+USB_NETWORK_SEARCH="Wi-Fi.*Adapter|Wireless.*Adapter|Ethernet.*Adapter|WLAN.*Adapter|Network.*Adapter|802\.11|Atheros|Atmel|D-Link.*Adapter|D-Link.*Wireless|Linksys|Netgea|Ralink|Realtek.*Network|Realtek.*Wireless|Realtek.*WLAN|Belkin.*Wireless|Belkin.*WLAN|Belkin.*Network"
 USB_NETWORK_SEARCH="$USB_NETWORK_SEARCH|Actiontec.*Wireless|Actiontec.*Network|AirLink.*Wireless|Asus.*Network|Asus.*Wireless|Buffalo.*Wireless|Davicom|DWA-.*RangeBooster|DWA-.*Wireless|ENUWI-.*Wireless|LG.*Wi-Fi|Rosewill.*Wireless|RNX-.*Wireless|Samsung.*LinkStick|Samsung.*Wireless|Sony.*Wireless|TEW-.*Wireless|TP-Link.*Wireless|WG[0-9][0-9][0-9].*Wireless|WNA[0-9][0-9][0-9]|WNDA[0-9][0-9][0-9]|Zonet.*ZEW.*Wireless|54 Mbps" 
 # then a few known hard to ID ones added 
 # belkin=050d; d-link=07d1; netgear=0846; ralink=148f; realtek=0bda; 
@@ -591,6 +591,16 @@ main()
 
 	# This function just initializes variables
 	initialize_data
+	
+	# Source global config overrides, needs to be here because some things
+	# can be reset that were set in initialize, but check_required_apps needs
+	if [[ -s /etc/$SCRIPT_NAME.conf ]];then
+		source /etc/$SCRIPT_NAME.conf
+	fi
+	# Source user config variables override /etc/inxi.conf variables
+	if [[ -s $HOME/.$SCRIPT_NAME/$SCRIPT_NAME.conf ]];then
+		source $HOME/.$SCRIPT_NAME/$SCRIPT_NAME.conf
+	fi
 
 	# Check for dependencies BEFORE running ANYTHING else except above functions
 	# Not all distro's have these depends installed by default. Don't want to run
@@ -604,14 +614,7 @@ main()
 	SCRIPT_VERSION_NUMBER=$( parse_version_data 'main' )
 	SCRIPT_PATCH_NUMBER=$( parse_version_data 'patch' )
 	
-	### Source global config overrides
-	if [[ -s /etc/$SCRIPT_NAME.conf ]];then
-		source /etc/$SCRIPT_NAME.conf
-	fi
-	# Source user config variables override /etc/inxi.conf variables
-	if [[ -s $HOME/.$SCRIPT_NAME/$SCRIPT_NAME.conf ]];then
-		source $HOME/.$SCRIPT_NAME/$SCRIPT_NAME.conf
-	fi
+	# previous source location, check for bugs
 
 	## this needs to run before the KONVI stuff is set below
 	## Konversation 1.2 apparently does not like the $PPID test in get_start_client
@@ -679,7 +682,7 @@ main()
 						color_scheme=$VIRT_TERM_COLOR_SCHEME
 					fi
 				else
-					if [[ -n $IRC_X_TERM_COLOR_SCHEME && $B_CONSOLE_IRC == 'true' && -n $DISPLAY ]];then
+					if [[ -n $IRC_X_TERM_COLOR_SCHEME && $B_CONSOLE_IRC == 'true' && -n $B_RUNNING_IN_X ]];then
 						color_scheme=$IRC_X_TERM_COLOR_SCHEME
 					elif [[ -n $IRC_CONS_COLOR_SCHEME && -z $DISPLAY ]];then
 						color_scheme=$IRC_CONS_COLOR_SCHEME
@@ -1625,7 +1628,8 @@ debug_data_collector()
 			ls -l /dev/disk/by-path &> $debug_data_dir/dev-disk-path-data.txt
 			ls -l /dev/mapper &> $debug_data_dir/dev-disk-mapper-data.txt
 			readlink /dev/root &> $debug_data_dir/dev-root.txt
-			df -h -T -P --exclude-type=aufs --exclude-type=squashfs --exclude-type=unionfs --exclude-type=devtmpfs --exclude-type=tmpfs --exclude-type=iso9660 --exclude-type=devfs --exclude-type=linprocfs --exclude-type=sysfs --exclude-type=fdescfs &> $debug_data_dir/df-h-T-excludes.txt
+			df -h -T -P --exclude-type=aufs --exclude-type=squashfs --exclude-type=unionfs --exclude-type=devtmpfs --exclude-type=tmpfs --exclude-type=iso9660 --exclude-type=devfs --exclude-type=linprocfs --exclude-type=sysfs --exclude-type=fdescfs &> $debug_data_dir/df-h-T-P-excludes.txt
+			df -T -P --exclude-type=aufs --exclude-type=squashfs --exclude-type=unionfs --exclude-type=devtmpfs --exclude-type=tmpfs --exclude-type=iso9660 --exclude-type=devfs --exclude-type=linprocfs --exclude-type=sysfs --exclude-type=fdescfs &> $debug_data_dir/df-T-P-excludes.txt
 			df -H -T &> $debug_data_dir/bsd-df-H-T-no-excludes.txt
 			df -H &> $debug_data_dir/bsd-df-H-no-excludes.txt
 			# bsd tool
@@ -1787,7 +1791,7 @@ check_recommends_items()
 	wc:coreutils~coreutils~coreutils~:word_character_count
 	'
 	local x_recommends='
-	glxinfo:mesa-utils~mesa-demos~glx-utils~:-G_glx_info 
+	glxinfo:mesa-utils~mesa-demos~glx-utils_(openSUSE_12.3_and_later_Mesa-demo-x)~:-G_glx_info 
 	xdpyinfo:X11-utils~xorg-xdpyinfo~xorg-x11-utils~:-G_multi_screen_resolution 
 	xprop:X11-utils~xorg-xprop~x11-utils~:-S_desktop_data 
 	xrandr:x11-xserver-utils~xrandr~x11-server-utils~:-G_single_screen_resolution
@@ -2449,7 +2453,7 @@ show_options()
 	print_screen_output "-C  Full CPU output, including per CPU clockspeed (if available)."
 	print_screen_output "-d  Optical drive data. Same as -Dd. See also -x and -xx."
 	print_screen_output "-D  Full hard Disk info, not only model, ie: /dev/sda ST380817AS 80.0GB. See also -x and -xx."
-	print_screen_output "-f  All cpu flags, triggers -C. Not shown with -F to avoid spamming."
+	print_screen_output "-f  All cpu flags, triggers -C. Not shown with -F to avoid spamming. ARM cpus show 'features'."
 	print_screen_output "-F  Full output for $SCRIPT_NAME. Includes all Upper Case line letters, plus -s and -n."
 	print_screen_output "    Does not show extra verbose options like -x -d -f -u -l -o -p -t -r"
 	print_screen_output "-G  Graphic card information (card, x type, resolution, glx renderer, version)."
@@ -2467,7 +2471,7 @@ show_options()
 	print_screen_output "-p  Full ${partition_string} information (-P plus all other detected ${partition_string}s)."
 	print_screen_output "-P  Basic ${partition_string} information (shows what -v 4 would show, but without extra data)."
 	print_screen_output "    Shows, if detected: / /boot /home /tmp /usr /var. Use -p to see all mounted ${partition_string}s."
-	print_screen_output "-r  Distro repository data. Currently supported repo types: APT; PACMAN; PISI; YUM; Ports."
+	print_screen_output "-r  Distro repository data. Supported repo types: APT; PACMAN; PISI; YUM; URPMQ; Ports."
 	print_screen_output "-R  RAID data. Shows RAID devices, states, levels, and components, and extra data with -x/-xx"
 	print_screen_output "    md-raid: If device is resyncing, shows resync progress line as well."
 	print_screen_output "-s  Sensors output (if sensors installed/configured): mobo/cpu/gpu temp; detected fan speeds."
@@ -3425,6 +3429,9 @@ get_cpu_data()
 			gsub(/^ +| +$/, "", $NF)
 			gsub(/ [ \t]+/, " ", $NF)
 			cpu[nr, "model"] = $NF
+			if ( $NF ~ "^ARM" ) {
+				bArm = "true"
+			}
 		}
 
 		/^cpu MHz|^clock\t+:/ {
@@ -3451,6 +3458,10 @@ get_cpu_data()
 
 		/^flags|^features/ {
 			cpu[nr, "flags"] = $NF
+			# not all ARM cpus show ARM in model name
+			if ( $1 ~ /^features/ ) {
+				bArm = "true"
+			}
 		}
 
 		/^bogomips/ {
@@ -3471,7 +3482,7 @@ get_cpu_data()
 				if ( cpu[i, "bogomips"] != "" && cpu[i, "speed"] == "" ) {
 					cpu[i, "speed"] = cpu[i, "bogomips"]
 				}
-				print cpu[i, "model"] "," cpu[i, "speed"] "," cpu[i, "cache"] "," cpu[i, "flags"] "," cpu[i, "bogomips"] ","  cpu[nr, "vendor"]
+				print cpu[i, "model"] "," cpu[i, "speed"] "," cpu[i, "cache"] "," cpu[i, "flags"] "," cpu[i, "bogomips"] ","  cpu[nr, "vendor"] "," bArm
 			}
 			# this is / was used in inxi short output only, but when it is N/A, need to use the previous array
 			# value, from above, the actual speed that is, for short output, key 0.
@@ -3587,7 +3598,8 @@ get_cpu_ht_multicore_smp_data()
 	eval $LOGFS
 	# in /proc/cpuinfo
 	local temp_array=''
-
+	
+	# note: known bug with xeon intel, they show a_core_id/physical_id as 0 for ht 4 core
 	if [[ $B_CPUINFO_FILE == 'true' ]]; then
 		A_CPU_TYPE_PCNT_CCNT=( $(
 		gawk '
@@ -3596,47 +3608,74 @@ get_cpu_ht_multicore_smp_data()
 			IGNORECASE = 1
 			num_of_cores = 0
 			num_of_processors = 0
-			num_of_cpus = 0
+			num_of_physical_cpus = 0
 			cpu_core_count = 0
-			core_id[0]
-			processor_id[0]
-			cpu_id[0]
-			type = "-"
-			iter = 0
+			siblings = 0
+			# these 3 arrays cannot be declared because that sets the first element
+			# but leaving this here so that we avoid doing that in the future
+			# a_core_id = ""
+			# a_processor_id = ""
+			# a_physical_id = ""
+			cpu_type = "-"
+			# note: we need separate iterators because some cpuinfo data has only
+			# processor, no core id or phys id
+			proc_iter = 0
+			core_iter = "" # set from actual NF data
+			phys_iter = "" # set from actual NF data
 			# needed to handle arm cpu, no processor number cases
-			count = 0
+			arm_count = 0
 			nr = 0
 			bArm = "false"
+			bXeon = "false"
+		}
+		# hack to handle xeons which can have buggy /proc/cpuinfo files
+		/^model name/ && ( $0 ~ /Xeon/ ) {
+			bXeon = "true"
+		}
+		# only do this once since sibling count does not change. 
+		/^siblings/ && ( bXeon == "true" ) && ( siblings == 0 ) {
+			gsub(/[^0-9]/,"",$NF)
+			if ( $NF != "" ) {
+				siblings = $NF
+			}
 		}
 		# array of logical processors, both HT and physical
+		
 		/^processor/ {
 			gsub(/,/, " ", $NF)
 			gsub(/^ +| +$/, "", $NF)
 			if ( $NF ~ "^[0-9]+$" ) {
-				processor_id[iter] = $NF
+				a_processor_id[proc_iter] = $NF
+				proc_iter++
 			}
 			else {
+				# note, for dual core, this can be off by one because the first
+				# line says: Processor : Arm.. but subsequent say: processor : 0 and so on as usual
 				if ( $NF ~ "^ARM" ) {
 					bArm = "true"
 				}
-				count += 1
-				nr = count - 1
-				processor_id[iter] = nr
+				arm_count += 1
+				nr = arm_count - 1
+				# note: do not iterate because new ARM syntax puts cpu in processsor : 0 syntax
+				a_processor_id[proc_iter] = nr
 			}
-			
 		}
-		# array of physical cpus ids
+		
+		# array of physical cpu ids, note, this will be unset for vm cpus in many cases
+		# because they have no physical cpu, so we cannot assume this will be here.
 		/^physical/ {
-			cpu_id[iter] = $NF
+			phys_iter = $NF
+			a_physical_id[phys_iter] = $NF
 		}
-		# array of core ids
+		# array of core ids, again, here we may have HT, so we need to create an array of the
+		# actual core ids. As With physical, we cannot assume this will be here in a vm
 		/^core id/ {
-			core_id[iter] = $NF
-			iter++
+			core_iter = $NF
+			a_core_id[core_iter] = $NF
 		}
 		# this will be used to fix an intel glitch if needed, cause, intel
-		# sometimes reports core id as the same number for each core, 0
-		# so if cpu cores shows greater value than number of cores, use this
+		# sometimes reports core id as the same number for each core, 
+		# so if cpu cores shows greater value than number of cores, use this. 
 		/^cpu cores/ {
 			cpu_core_count = $NF
 		}
@@ -3645,69 +3684,74 @@ get_cpu_ht_multicore_smp_data()
 			##	only unique numbers required
 			## 	this is to get an accurate count
 			##	we are only concerned with array length
-			
 			i = 0
 			## count unique processors ##
 			# note, this fails for intel cpus at times
-			for ( i in processor_id ) {
-				procHolder[processor_id[i]] = 1
-			}
-			for ( i in procHolder ) {
+			for ( i in a_processor_id ) {
 				num_of_processors++
+			}
+			i = 0
+			## count unique physical cpus ##
+			for ( i in a_physical_id ) {
+				num_of_physical_cpus++
 			}
 			
 			i = 0
-			## count unique physical cpus ##
-			for ( i in cpu_id ) {
-				cpuHolder[cpu_id[i]] = 1
-			}
-			for ( i in cpuHolder ) {				
-				num_of_cpus++
-			}
-			
-			i = 0		
 			## count unique cores ##
-			for ( i in core_id ) {
-				coreHolder[core_id[i]] = 1
-			}
-			for ( i in coreHolder ) {				
+			for ( i in a_core_id ) {
 				num_of_cores++
+			}
+			# xeon may show wrong core / physical id count, if it does, fix it. A xeon
+			# may show a repeated core id : 0 which gives a fake num_of_cores=1
+			if ( bXeon == "true" && num_of_cores == 1 && siblings > 1 ) {
+				num_of_cores = siblings/2
 			}
 			# final check, override the num of cores value if it clearly is wrong
 			# and use the raw core count and synthesize the total instead of real count
-			if ( ( num_of_cores == 1 ) && ( cpu_core_count * num_of_cpus > 1 ) ) {
-				num_of_cores = cpu_core_count * num_of_cpus
+			if ( ( num_of_cores == 0 ) && ( cpu_core_count * num_of_physical_cpus > 1 ) ) {
+				num_of_cores = cpu_core_count * num_of_physical_cpus
 			}
-			
+			# last check, seeing some intel cpus and vms with intel cpus that do not show any
+			# core id data at all, or siblings.
+			if ( num_of_cores == 0 && num_of_processors > 0 ) {
+				num_of_cores = num_of_processors
+			}
+			# ARM/vm cpu fix, if no physical or core found, use count of 1 instead
+			if ( num_of_physical_cpus == 0 ) {
+				num_of_physical_cpus = 1
+			}
+# 			print "NoCpu: " num_of_physical_cpus
+# 			print "NoCores: " num_of_cores
+# 			print "NoProc:" num_of_processors
+# 			print "CpuCoreCount:" cpu_core_count
 			####################################################################
 			# 				algorithm
 			# if > 1 processor && processor id (physical id) == core id then Hyperthreaded (HT)
 			# if > 1 processor && processor id (physical id) != core id then Multi-Core Processors (MCP)
 			# if > 1 processor && processor ids (physical id) > 1 then Multiple Processors (SMP)
 			# if = 1 processor then single core/processor Uni-Processor (UP)
-			if ( num_of_processors > 1 )
-			{
+			if ( num_of_processors > 1 || ( bXeon == "true" && siblings > 0 ) ) {
 				# non-multicore HT
-				if ( num_of_processors == (num_of_cores * 2))
-				{
-					type = type "HT-"
+				if ( num_of_processors == (num_of_cores * 2) ) {
+					cpu_type = cpu_type "HT-"
+				}
+				else if ( bXeon == "true" && siblings > 1 ) {
+					cpu_type = cpu_type "HT-"
 				}
 				# non-HT multi-core or HT multi-core
-				if (( num_of_processors == num_of_cores) ||
-					( num_of_cpus < num_of_cores))
-				{
-					type = type "MCP-"
+				if (( num_of_processors == num_of_cores) || ( num_of_physical_cpus < num_of_cores)) {
+					cpu_type = cpu_type "MCP-"
 				}
 				# >1 cpu sockets active
-				if ( num_of_cpus > 1 )
-				{
-					type = type "SMP-"
+				if ( num_of_physical_cpus > 1 ) {
+					cpu_type = cpu_type "SMP-"
 				}
-			} else {
-				type = type "UP-"
+			} 
+			else {
+				cpu_type = cpu_type "UP-"
 			}			
 			
-			print type " " num_of_cpus " " num_of_cores
+			print cpu_type " " num_of_physical_cpus " " num_of_cores 
 		}
 		' $FILE_CPUINFO ) )
 	fi
@@ -3892,6 +3936,12 @@ get_desktop_environment()
 					version="$version "
 				fi
 				desktop_environment="WM2"
+			elif [[ -n $( grep -is 'herbstluftwm' <<< "$xprop_root" ) ]];then
+				version=$( get_de_app_version 'herbstluftwm' '^herbstluftwm' 'NF' )
+				if [[ -n $version ]];then
+					version="$version "
+				fi
+				desktop_environment="herbstluftwm"
 			fi
 		fi
 		# a few manual hacks for things that don't id with xprop, these are just good guesses
@@ -3912,6 +3962,9 @@ get_desktop_environment()
 			elif [[ -n $( grep -is 'scrotwm' <<< "$Ps_aux_Data" | grep -v 'grep' ) ]];then
 				version=$( get_de_app_version 'scrotwm' '^welcome.*scrotwm' '4' )
 				desktop_environment='Scrotwm' # no --version for this one
+			elif [[ -n $( grep -is 'spectrwm' <<< "$Ps_aux_Data" | grep -v 'grep' ) ]];then
+				version=$( get_de_app_version 'spectrwm' '^spectrwm.*welcome.*spectrwm' '5' )
+				desktop_environment='Spectrwm' # no --version for this one
 			elif [[ -n $( grep -Eis '([[:space:]]|/)twm' <<< "$Ps_aux_Data" | grep -v 'grep' ) ]];then
 				desktop_environment='Twm' # no --version for this one
 			elif [[ -n $( grep -Eis '([[:space:]]|/)dwm' <<< "$Ps_aux_Data" | grep -v 'grep' ) ]];then
@@ -3952,7 +4005,7 @@ get_de_app_version()
 	
 	case $1 in
 		# note, some wm/apps send version info to stderr instead of stdout
-		dwm|ksh|scrotwm)
+		dwm|ksh|scrotwm|spectrwm)
 			version_data="$( $1 $get_version 2>&1 )"
 			;;
 		csh)
@@ -4250,7 +4303,7 @@ get_distro_lsb_os_release_data()
 				# sometimes some distros cannot do their lsb-release files correctly, so here is
 				# one last chance to get it right.
 				/^DISTRIB_DESCRIPTION/ {
-s					if ( $2 != "n/a" ) {
+					if ( $2 != "n/a" ) {
 						distroDescription = $2
 					}
 				}
@@ -4648,7 +4701,7 @@ get_graphics_driver()
 	eval $LOGFS
 	
 	# list is from sgfxi plus non-free drivers
-	local driver_list='apm|ark|ati|chips|cirrus|cyrix|fbdev|fglrx|glint|i128|i740|intel|i810|imstt|mach64|mga|neomagic|nsc|nv|nvidia|openchrome|nouveau|radeon|radeonhd|rendition|s3|s3virge|savage|siliconmotion|sis|sisusb|tdfx|tga|trident|tseng|unichrome|vboxvideo|vesa|vga|via|voodoo|vmware|v4l'
+	local driver_list='apm|ark|ati|chips|cirrus|cyrix|fbdev|fglrx|glint|i128|i740|intel|i810|imstt|mach64|mga|neomagic|nsc|nvidia|nv|openchrome|nouveau|radeon|radeonhd|rendition|s3virge|s3|savage|siliconmotion|sisusb|sis|tdfx|tga|trident|tseng|unichrome|vboxvideo|vesa|vga|via|voodoo|vmware|v4l'
 	local driver='' driver_string='' xorg_log_data='' status='' temp_array=''
 
 	if [[ $B_XORG_LOG == 'true' ]];then
@@ -4656,7 +4709,10 @@ get_graphics_driver()
 		gawk '
 		BEGIN {
 			driver=""
+			bLoaded="false"
+			IGNORECASE=1
 		}
+		# note that in file names, driver is always lower case
 		/[[:space:]]Loading.*('"$driver_list"')_drv.so$/ {
 			driver=gensub(/.*[[:space:]]Loading.*('"$driver_list"')_drv.so/, "\\1", 1, $0 )
 			# we get all the actually loaded drivers first, we will use this to compare the
@@ -4678,6 +4734,17 @@ get_graphics_driver()
 			# we need to make sure that the driver has already been truly loaded, not just discussed
 			if ( driver != $0 && driver in aDrivers ) {
 				aDrivers[driver]="failed"
+			}
+		}
+		# verify that the driver actually started the desktop, even with false failed messages which can occur
+		# this is the driver that is actually driving the display
+		/.*\([0-9]+\):[[:space:]]Depth.*framebuffer/ {
+			driver=gensub(/.*('"$driver_list"')\([0-9]+\):[[:space:]]Depth.*framebuffer.*/, "\\1", 1, $0 )
+			# we need to make sure that the driver has already been truly loaded, not just discussed, also
+			# set driver to lower case because sometimes it will show as RADEON or NVIDIA in the actual x start
+			driver=tolower(driver)
+			if ( driver != $0 && driver in aDrivers ) {
+				aDrivers[driver]="loaded"
 			}
 		}
 		END {
@@ -4967,44 +5034,59 @@ get_hdd_data_basic()
 	fi
 	hdd_data="$( eval $df_string )"
 	log_function_data 'raw' "hdd_data:\n$hdd_data"
-	
-	hdd_used=$( echo "$hdd_data" | gawk -v bsdType=$BSD_TYPE '
+	hdd_used=$( 	echo "$hdd_data" | gawk -v bsdType=$BSD_TYPE '
 	BEGIN {
 		# this is used for specific cases where bind, or incorrect multiple mounts to same partitions,
 		# is present. The value is searched for an earlier appearance of that partition and if it is 
 		# present, the data is not added into the partition used size.
 		partitionsSet=""
+		# this handles a case where the same dev item is mounted twice to different points
+		devSet=""
+		devWorking=""
+		mountWorking=""
 	}
 	# using $1, not $2, because older bsd df do not have -T, filesystem type
-	( bsdType != "" ) && $1 ~ /^(aufs|devfs|devtmpfs|fdescfs|iso9660|linprocfs|procfs|squashfs|sysfs|tmpfs|type|unionfs)$/ {
+	( bsdType != "" ) && $1 ~ /^(aufs|devfs|devtmpfs|fdescfs|filesystem|iso9660|linprocfs|procfs|squashfs|sysfs|tmpfs|type|unionfs)$/ {
 		# note use next, not getline or it does not work right
 		next 
 	}
 	# also handles odd dm-1 type, from lvm, and mdraid, and some other bsd partition syntax
-	/^\/dev\/(mapper\/|[hsv]d[a-z][0-9]+|dm[-]?[0-9]+|ada[0-9]+p[0-9]+.*|md[0-9]+|[aw]d[0-9]+s.*)/ {
+	# note that linux 3.2.45-grsec-9th types kernels have this type of partition name: /dev/xvdc (no number, letter)
+	/^\/dev\/(mapper\/|[hsv]d[a-z][0-9]+|dm[-]?[0-9]+|ada[0-9]+p[0-9]+.*|md[0-9]+|[aw]d[0-9]+s.*|xvd[a-z])/ {
 		# this handles the case where the first item is too long
 		# and makes df wrap output to next line, so here we advance
 		# it to the next line for that single case. Using df -P should
 		# make this unneeded but leave it in just in case
 		if ( NF < 6 && $0 !~ /.*%/ ) {
+			devSet = devSet "~" $1 "~"
 			getline
 		}
 		# if the first item caused a wrap, use one less than standard
 		# testing for the field with % in it, ie: 34%, then go down from there
 		# this also protects against cases where the mount point has a space in the
 		# file name, thus breaking going down from $NF directly.
+		# some bsds will also have only 6 items
 		if ( $5 ~ /.*%/ ) {
-			if ( partitionsSet !~ /.*~$6~.*/ ) {
+			devWorking="~" $1 "~"
+			mountWorking="~" $6 "~"
+			if ( partitionsSet !~ mountWorking && devSet !~ devWorking ) {
 				used += $3
 			}
-			partitionsSet = partitionsSet "~" $6 "~" 
+			partitionsSet = partitionsSet mountWorking
+			# make sure to only include bsd real lines here, ie, short df output
+			if ( $1 ~ /^\/dev\// ) {
+				devSet = devSet devWorking
+			}
 		}
 		# otherwise use standard
 		else if ( $6 ~ /.*%/ ) {
-			if ( partitionsSet !~ /.*~$7~.*/ ) {
+			devWorking="~" $1 "~"
+			mountWorking="~" $7 "~"
+			if ( partitionsSet !~ mountWorking && devSet !~ devWorking ) {
 				used += $4
 			}
-			partitionsSet = partitionsSet "~" $7 "~"
+			partitionsSet = partitionsSet mountWorking
+			devSet = devSet devWorking
 		}
 		# and if this is not detected, give up, we need user data to debug
 		else {
@@ -5038,8 +5120,8 @@ get_hdd_data_basic()
 		#	size += $3
 		# }
 		# special case from this data: 8     0  156290904 sda
-		# note: vm has 252 known starter
-		$1 ~ /^(3|8|22|33|252)$/ && $NF ~ /[hsv]d[a-z]$/ && ( $2 % 16 == 0 || $2 % 16 == 8 ) {
+		# note: vm has 252/253/254 known starter, grsec has 202
+		$1 ~ /^(3|8|22|33|202|252|253|254)$/ && $NF ~ /[hsv]d[a-z]$/ && ( $2 % 16 == 0 || $2 % 16 == 8 ) {
 			size += $3
 		}
 
@@ -5255,6 +5337,27 @@ get_hdd_temp_data()
 			echo $hdd_temp
 		fi
 	fi
+	eval $LOGFE
+}
+
+get_kernel_version()
+{
+	eval $LOGFS
+	
+	local kernel_version='' ksplice_kernel_version=''
+	
+	kernel_version=$( uname -rm )
+	
+	if [[ -n $( type -p uptrack-uname ) && -n $kernel_version ]];then
+		ksplice_kernel_version=$( uptrack-uname -rm )
+		if [[ $kernel_version != $ksplice_kernel_version ]];then
+			kernel_version="$ksplice_kernel_version (ksplice)"
+		fi
+	fi
+	log_function_data "kernel_version: $kernel_version - ksplice_kernel_version: $ksplice_kernel_version"
+	
+	echo $kernel_version
+	
 	eval $LOGFE
 }
 
@@ -6230,7 +6333,7 @@ get_partition_data()
 	}
 	
 	# next set devBase if it didn not get set above here
-	( $1 ~ /^\/dev\/|:\/|\/\// ) && ( devBase == "" ) {
+	( devBase == "" ) && ( $1 ~ /^\/dev\/|:\/|\/\// ) {
 		devBase=gensub( /^(\/dev\/)(.+)$/, "\\2", 1, $1 )
 	}
 	# this handles zfs type devices/partitions, which do not start with / but contain /
@@ -7216,10 +7319,11 @@ get_raid_component_data_bsd()
 get_repo_data()
 {
 	eval $LOGFS
-	local repo_file='' repo_data_working='' repo_data_working2='' repo_line='' 
+	local repo_file='' repo_data_working='' repo_data_working2='' repo_line='' repo_files=''
+	local repo_name=''
 	local apt_file='/etc/apt/sources.list' yum_repo_dir='/etc/yum.repos.d/' yum_conf='/etc/yum.conf'
 	local pacman_conf='/etc/pacman.conf' pacman_repo_dir='/etc/pacman.d/' pisi_dir='/etc/pisi/'
-	local freebsd_conf='/etc/portsnap.conf'
+	local zypp_repo_dir='/etc/zypp/repos.d/' freebsd_conf='/etc/portsnap.conf'
 	
 	# apt - debian, buntus, also sometimes some yum/rpm repos may create apt repos here as well
 	if [[ -f $apt_file || -d $apt_file.d ]];then
@@ -7230,107 +7334,86 @@ get_repo_data()
 	# actually running, inxi will merely note the existence of each repo type for apt/yum. 
 	# Also, in rpm, you can install apt-rpm for the apt-get command, so it's not good to check for
 	# only the commands in terms of selecting which repos to show.
-	if [[ -d $yum_repo_dir || -f $yum_conf ]];then
-		# older redhats put their yum data in /etc/yum.conf
-		for repo_file in $( ls $yum_repo_dir*.repo $yum_conf 2>/dev/null )
-		do
-			repo_data_working="$( gawk -v repoFile=$repo_file '
-			# construct the string for the print function to work with, file name: data
-			function print_line( fileName, repoId, repoUrl ){
-				print "yum repos:" fileName ":" repoId repoUrl
-			}
-			BEGIN {
-				FS="\n"
-				IGNORECASE=1
-				enabledStatus=""
-				repoTitle=""
-				urlData=""
-			}
-			# this is a hack, assuming that each item has these fields listed, we collect the 3
-			# items one by one, then when the url/enabled fields are set, we print it out and
-			# reset the data. Not elegant but it works. Note that if enabled was not present
-			# we assume it is enabled then, and print the line, reset the variables. This will
-			# miss the last item, so it is printed if found in END
-			/^\[.+\]/ {
-				if ( urlData != "" && repoTitle != "" ){
-					print_line( repoFile, repoTitle, urlData )
-					enabledStatus=""
-					urlData=""
-					repoTitle=""
+	if [[ -d $yum_repo_dir || -f $yum_conf || -d $zypp_repo_dir ]];then
+		if [[ -d $yum_repo_dir || -f $yum_conf ]];then
+			# older redhats put their yum data in /etc/yum.conf
+			repo_files=$( ls $yum_repo_dir*.repo $yum_conf 2>/dev/null )
+			repo_name='yum'
+		elif [[ -d $zypp_repo_dir ]];then
+			repo_files=$( ls $zypp_repo_dir*.repo 2>/dev/null )
+			repo_name='zypp'
+		fi
+		if [[ -n $repo_files ]];then
+			for repo_file in $repo_files
+			do
+				repo_data_working="$( gawk -v repoFile=$repo_file '
+				# construct the string for the print function to work with, file name: data
+				function print_line( fileName, repoId, repoUrl ){
+					print "'$repo_name' sources:" fileName ":" repoId repoUrl
 				}
-				gsub( /\[|\]/, "", $1 ) # strip out the brackets
-				repoTitle = $1 " ~ "
-			}
-			/^(mirrorlist|baseurl)/ {
-				sub( /(mirrorlist|baseurl)[[:space:]]*=[[:space:]]*/, "", $1 ) # strip out the field starter
-				urlData = $1
-			}
-			# note: enabled = 1. enabled = 0 means disabled
-			/^enabled[[:space:]]*=/ {
-				enabledStatus = $1
-			}
-			# print out the line if all 3 values are found, otherwise if a new
-			# repoTitle is hit above, it will print out the line there instead
-			{ 
-				if ( urlData != "" && enabledStatus != "" && repoTitle != "" ){
-					if ( enabledStatus !~ /enabled[[:space:]]*=[[:space:]]*0/ ){
+				BEGIN {
+					FS="\n"
+					IGNORECASE=1
+					enabledStatus=""
+					repoTitle=""
+					urlData=""
+				}
+				# this is a hack, assuming that each item has these fields listed, we collect the 3
+				# items one by one, then when the url/enabled fields are set, we print it out and
+				# reset the data. Not elegant but it works. Note that if enabled was not present
+				# we assume it is enabled then, and print the line, reset the variables. This will
+				# miss the last item, so it is printed if found in END
+				/^\[.+\]/ {
+					if ( urlData != "" && repoTitle != "" ){
+						print_line( repoFile, repoTitle, urlData )
+						enabledStatus=""
+						urlData=""
+						repoTitle=""
+					}
+					gsub( /\[|\]/, "", $1 ) # strip out the brackets
+					repoTitle = $1 " ~ "
+				}
+				/^(mirrorlist|baseurl)/ {
+					sub( /(mirrorlist|baseurl)[[:space:]]*=[[:space:]]*/, "", $1 ) # strip out the field starter
+					urlData = $1
+				}
+				# note: enabled = 1. enabled = 0 means disabled
+				/^enabled[[:space:]]*=/ {
+					enabledStatus = $1
+				}
+				# print out the line if all 3 values are found, otherwise if a new
+				# repoTitle is hit above, it will print out the line there instead
+				{ 
+					if ( urlData != "" && enabledStatus != "" && repoTitle != "" ){
+						if ( enabledStatus !~ /enabled[[:space:]]*=[[:space:]]*0/ ){
+							print_line( repoFile, repoTitle, urlData )
+						}
+						enabledStatus=""
+						urlData=""
+						repoTitle=""
+					}
+				}
+				END {
+					# print the last one if there is data for it
+					if ( urlData != ""  && repoTitle != "" ){
 						print_line( repoFile, repoTitle, urlData )
 					}
-					enabledStatus=""
-					urlData=""
-					repoTitle=""
 				}
-			}
-			END {
-				# print the last one if there is data for it
-				if ( urlData != ""  && repoTitle != "" ){
-					print_line( repoFile, repoTitle, urlData )
-				}
-			}
-			' $repo_file )"
-			
-			# then load the global for each file as it gets filled
-			if [[ -n $repo_data_working ]];then
-				if [[ -z $REPO_DATA ]];then
-					REPO_DATA="$repo_data_working"
-				else
-					REPO_DATA="$REPO_DATA
+				' $repo_file )"
+				
+				# then load the global for each file as it gets filled
+				if [[ -n $repo_data_working ]];then
+					if [[ -z $REPO_DATA ]];then
+						REPO_DATA="$repo_data_working"
+					else
+						REPO_DATA="$REPO_DATA
 $repo_data_working"
+					fi
+					repo_data_working=''
 				fi
-				repo_data_working=''
-			fi
-		done
-	# pacman - archlinux, going to assume that pisi and arch/pacman don't have the above issue with apt/yum
-	# pisi - pardus
-	elif [[ -d $pisi_dir && -n $( type -p pisi ) ]];then
-		REPO_DATA="$( pisi list-repo )"
-		# now we need to create the structure: repo info: repo path
-		# we do that by looping through the lines of the output and then
-		# putting it back into the <data>:<url> format print repos expects to see
-		# note this structure in the data, so store first line and make start of line
-		# then when it's an http line, add it, and create the full line collection.
-# Pardus-2009.1 [Aktiv]
-# 	http://packages.pardus.org.tr/pardus-2009.1/pisi-index.xml.bz2
-# Contrib [Aktiv]
-# 	http://packages.pardus.org.tr/contrib-2009/pisi-index.xml.bz2
-		while read repo_line
-		do
-			repo_line=$( gawk '
-			{
-				# need to dump leading/trailing spaces and clear out color codes for irc output
-				sub(/^[[:space:]]+|[[:space:]]+$/,"",$0)
-# 				gsub(/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]/,"",$0) # leaving this pattern in case need it
-				gsub(/\[([0-9];)?[0-9]+m/,"",$0)
-				print $0
-			}' <<< $repo_line )
-			if [[ -n $( grep '://' <<< $repo_line ) ]];then
-				repo_data_working="$repo_data_working:$repo_line\n"
-			else
-				repo_data_working="${repo_data_working}pisi repo:$repo_line"
-			fi
-		done <<< "$REPO_DATA"
-		# echo and execute the line breaks inserted
-		REPO_DATA="$( echo -e $repo_data_working )"
+			done
+		fi
+	# pacman - archlinux, going to assume that pisi and arch/pacman, etc don't have the above issue with apt/yum
 	elif [[ -f $pacman_conf ]];then
 		# get list of mirror include files, trim white space off ends
 		repo_data_working="$( gawk '
@@ -7366,6 +7449,71 @@ $repo_data_working"
 		done
 		# execute line breaks
 		REPO_DATA="$( echo -e $repo_data_working2 )"
+	# pisi - pardus
+	elif [[ -d $pisi_dir && -n $( type -p pisi ) ]];then
+		REPO_DATA="$( pisi list-repo )"
+		# now we need to create the structure: repo info: repo path
+		# we do that by looping through the lines of the output and then
+		# putting it back into the <data>:<url> format print repos expects to see
+		# note this structure in the data, so store first line and make start of line
+		# then when it's an http line, add it, and create the full line collection.
+# Pardus-2009.1 [Aktiv]
+# 	http://packages.pardus.org.tr/pardus-2009.1/pisi-index.xml.bz2
+# Contrib [Aktiv]
+# 	http://packages.pardus.org.tr/contrib-2009/pisi-index.xml.bz2
+		while read repo_line
+		do
+			repo_line=$( gawk '
+			{
+				# need to dump leading/trailing spaces and clear out color codes for irc output
+				sub(/^[[:space:]]+|[[:space:]]+$/,"",$0)
+# 				gsub(/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]/,"",$0) # leaving this pattern in case need it
+				gsub(/\[([0-9];)?[0-9]+m/,"",$0)
+				print $0
+			}' <<< $repo_line )
+			if [[ -n $( grep '://' <<< $repo_line ) ]];then
+				repo_data_working="$repo_data_working:$repo_line\n"
+			else
+				repo_data_working="${repo_data_working}pisi repo:$repo_line"
+			fi
+		done <<< "$REPO_DATA"
+		# echo and execute the line breaks inserted
+		REPO_DATA="$( echo -e $repo_data_working )"
+	# Mandriva/Mageia using: urpmq
+	elif [[ -n $( type -p urpmq ) ]];then
+		REPO_DATA="$( urpmq --list-media active --list-url )"
+		# now we need to create the structure: repo info: repo path
+		# we do that by looping through the lines of the output and then
+		# putting it back into the <data>:<url> format print repos expects to see
+		# note this structure in the data, so store first line and make start of line
+		# then when it's an http line, add it, and create the full line collection.
+# Contrib ftp://ftp.uwsg.indiana.edu/linux/mandrake/official/2011/x86_64/media/contrib/release
+# Contrib Updates ftp://ftp.uwsg.indiana.edu/linux/mandrake/official/2011/x86_64/media/contrib/updates
+# Non-free ftp://ftp.uwsg.indiana.edu/linux/mandrake/official/2011/x86_64/media/non-free/release
+# Non-free Updates ftp://ftp.uwsg.indiana.edu/linux/mandrake/official/2011/x86_64/media/non-free/updates
+# Nonfree Updates (Local19) /mnt/data/mirrors/mageia/distrib/cauldron/x86_64/media/nonfree/updates
+		while read repo_line
+		do
+			repo_line=$( gawk '
+			{
+				# need to dump leading/trailing spaces and clear out color codes for irc output
+				sub(/^[[:space:]]+|[[:space:]]+$/,"",$0)
+# 				gsub(/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]/,"",$0) # leaving this pattern in case need it
+				gsub(/\[([0-9];)?[0-9]+m/,"",$0)
+				print $0
+			}' <<< $repo_line )
+			# urpmq output is the same each line, repo name space repo url, can be:
+			# rsync://, ftp://, file://, http:// OR repo is locally mounted on FS in some cases
+			if [[ -n $( grep -E '(://|[[:space:]]/)' <<< $repo_line ) ]];then
+				# cut out the repo first
+				repo_data_working2=$( grep -Eo '([^[:space:]]+://|[[:space:]]/).*' <<< $repo_line )
+				# then get the repo name string by slicing out the url string
+				repo_name=$( sed "s|[[:space:]]*$repo_data_working2||" <<< $repo_line )
+				repo_data_working="${repo_data_working}urpmq repo:$repo_name:$repo_data_working2\n"
+			fi
+		done <<< "$REPO_DATA"
+		# echo and execute the line breaks inserted
+		REPO_DATA="$( echo -e $repo_data_working )"
 	elif [[ -f $freebsd_conf ]];then
 		REPO_DATA="$( gawk -F '=' -v repoFile=$freebsd_conf '
 		BEGIN {
@@ -8445,7 +8593,7 @@ print_it_out()
 print_short_data()
 {
 	eval $LOGFS
-	local current_kernel=$( uname -rm ) # | gawk '{print $1,$3,$(NF-1)}' )
+	local current_kernel=$( get_kernel_version ) 
 	local processes=$(( $( wc -l <<< "$Ps_aux_Data" ) - 1 ))
 	local short_data='' i='' b_background_black='false'
 	local memory=$( get_memory_data )
@@ -8686,7 +8834,7 @@ print_cpu_data()
 {
 	eval $LOGFS
 	local cpu_data='' i='' cpu_clock_speed='' cpu_multi_clock_data=''
-	local bmip_data='' cpu_cache='' cpu_vendor='' cpu_flags=''
+	local bmip_data='' cpu_cache='' cpu_vendor='' cpu_flags='' flag_feature='flags'
 	local a_cpu_working='' cpu_model='' cpu_clock='' cpu_null_error=''
 	local cpc_plural='' cpu_count_print='' model_plural='' cpu_data_string=''
 	local cpu_physical_count='' cpu_core_count='' cpu_core_alpha='' cpu_type=''
@@ -8735,6 +8883,8 @@ print_cpu_data()
 			# update for multicore, bogomips x core count.
 			if [[ $B_EXTRA_DATA == 'true' ]];then
 	# 			if [[ $cpu_vendor != 'intel' ]];then
+				# ARM may use the faked 1 cpucorecount to make this work
+				# echo $cpu_core_count $cpu_physical_count
 				if [[ -n ${a_cpu_working[4]} ]];then
 					bmip_data=$( calculate_multicore_data "${a_cpu_working[4]}" "$(( $cpu_core_count * $cpu_physical_count ))" )
 				fi
@@ -8762,11 +8912,19 @@ print_cpu_data()
 			# only print shortened list
 			if [[ $B_CPU_FLAGS_FULL != 'true' ]];then
 				# gawk has already sorted this output, no flags returns -
-				cpu_flags=$( process_cpu_flags "${a_cpu_working[3]}" )
+				cpu_flags=$( process_cpu_flags "${a_cpu_working[3]}" "${a_cpu_working[6]}" )
 				cpu_flags="($cpu_flags)"
-				cpu_flags=" ${C1}flags$SEP3${C2} $cpu_flags"
+				if [[ ${a_cpu_working[6]} == 'true' ]];then
+					flag_feature='features'
+				fi
+				cpu_flags=" ${C1}$flag_feature$SEP3${C2} $cpu_flags"
 			fi
-			cpu_data="$cpu_data${C2} ${C1}cache$SEP3${C2} $cpu_cache$cpu_flags$bmip_data${CN}"
+			# arm cpus do not have flags or cache
+			if [[ ${a_cpu_working[6]} != 'true' ]];then
+				cpu_data="$cpu_data${C2} ${C1}cache$SEP3${C2} $cpu_cache$cpu_flags$bmip_data${CN}"
+			else
+				cpu_data="$cpu_data${C2} (ARM)$bmip_data${CN}"
+			fi
 		fi
 		# we don't this printing out extra line unless > 1 cpu core
 		if [[ ${#A_CPU_DATA[@]} -gt 2 && $B_SHOW_CPU == 'true' ]];then
@@ -8804,13 +8962,13 @@ print_cpu_data()
 		fi
 	fi
 	if [[ $B_CPU_FLAGS_FULL == 'true' ]];then
-		print_cpu_flags_full "${a_cpu_working[3]}"
+		print_cpu_flags_full "${a_cpu_working[3]}" "${a_cpu_working[6]}"
 	fi
 	eval $LOGFE
 }
 
 # takes list of all flags, split them and prints x per line
-# args: $1 - cpu flag string
+# args: $1 - cpu flag string; $2 - arm true/false
 print_cpu_flags_full()
 {
 	eval $LOGFS
@@ -8818,7 +8976,11 @@ print_cpu_flags_full()
 	local cpu_flags_full="$( echo $1 | tr " " "\n" | sort )" 
 	local a_cpu_flags='' line_starter=''
 	local i=0 counter=0 max_length=85 max_length_minus=15 flag='' flag_data=''
-	local line_length_max=''
+	local line_length_max='' flag_feature='Flags'
+	
+	if [[ $2 == 'true' ]];then
+		flag_feature='Features'
+	fi
 	
 
 	# build the flag line array
@@ -8839,7 +9001,7 @@ print_cpu_flags_full()
 	for (( i=0; i < ${#a_cpu_flags[@]};i++ ))
 	do
 		if [[ $i -eq 0 ]];then
-			line_starter="${C1}CPU Flags$SEP3${C2} "
+			line_starter="${C1}CPU $flag_feature$SEP3${C2} "
 		else
 			line_starter=''
 		fi
@@ -9054,6 +9216,7 @@ print_hard_disk_data()
 	local hdd_capacity="${a_hdd_basic_working[0]}"
 	local hdd_used=${a_hdd_basic_working[1]}
 	local bsd_unsupported='Hard drive data not yet supported for BSD systems.'
+	local hdd_name_temp=''
 
 	if [[ $B_SHOW_BASIC_DISK == 'true' || $B_SHOW_DISK == 'true' ]];then
 	## note: the output part of this should be in the print hdd data function, not here
@@ -9093,7 +9256,12 @@ print_hard_disk_data()
 				fi
 				dev_data="${C1}id$SEP3${C2} /dev/${a_hdd_working[0]} "
 			fi
-			hdd_name="${C1}model$SEP3${C2} ${a_hdd_working[2]}"
+			if [[ -n ${a_hdd_working[2]} ]];then
+				hdd_name_temp=${a_hdd_working[2]}
+			else
+				hdd_name_temp='N/A'
+			fi
+			hdd_name="${C1}model$SEP3${C2} $hdd_name_temp"
 			hdd_string="$usb_data$dev_data$hdd_name$size_data$hdd_serial$hdd_temp_data"
 			hdd_model="${hdd_model}${C1}$(($i+1)):${C2} $hdd_string "
 			# printing line one, then new lines according to $divisor setting, and after, if leftovers, print that line.
@@ -10362,12 +10530,13 @@ print_repo_data()
 			else
 				file_content=$( echo $file_content )
 			fi
+			# echo $file_name : $file_name_holder : $repo_type : $file_content
 			# check file name, if different, update the holder for print out
 			if [[ $file_name != $file_name_holder ]];then
-				if [[ $repo_type != 'pisi repo' ]];then
-					repo_full="${C1}Active $repo_type in file:${C2} $file_name"
-				else
+				if [[ $repo_type == 'pisi repo' || $repo_type == 'urpmq repo' ]];then
 					repo_full="${C1}$repo_type:${C2} $file_name"
+				else
+					repo_full="${C1}Active $repo_type in file:${C2} $file_name"
 				fi
 				file_name_holder=$file_name
 				b_print_next_line='true'
@@ -10546,7 +10715,7 @@ print_system_data()
 	local system_data='' bits='' desktop_environment='' dm_data='' de_extra_data=''
 	local host_kernel_string='' de_distro_string='' host_string='' desktop_type='Desktop'
 	local host_name=$HOSTNAME
-	local current_kernel=$( uname -rm ) # | gawk '{print $1,$3,$(NF-1)}' )
+	local current_kernel=$( get_kernel_version ) 
 	local distro="$( get_distro_data )"
 	local tty_session=''
 	
