@@ -184,10 +184,14 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 # offer indexes before parameters in subscripts
 #zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
 
-# command for process lists, the local web server details and host completion
-#zstyle ':completion:*:processes' command 'ps -o pid,s,nice,stime,args'
+# command for the local web server details and host completion
 #zstyle ':completion:*:urls' local 'www' '/var/www/htdocs' 'public_html'
 zstyle '*' hosts $hosts
+
+# command completion for 'kill', 'killall', 'pkill', etc.
+zstyle ':completion:*:processes-names' command 'ps -e -o comm='
+zstyle ':completion:*:processes' command 'ps -au$USER'
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;32'
 
 # Filename suffixes to ignore during completion (except after rm command)
 zstyle ':completion:*:*:(^rm):*:*files' ignored-patterns '*?.o' '*?.c~' \
