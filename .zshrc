@@ -44,7 +44,6 @@ alias psg='ps aux | grep'
 if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
 # Aliases (convenience)
-alias kdevelop-remove-locks='rm $KDEHOME/share/apps/kdevelop/sessions/*/lock'
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
 alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g'"
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"
@@ -58,10 +57,6 @@ alias env-devel='cd ~/devel/src && source ~/.bashrc_devel'
 # Functions
 function mkcd() {
     [ -n "$1" ] && mkdir -p "$@" && cd "$1";
-}
-function env-neon()
-{
-    . /opt/project-neon/share/project-neon/environment.rc
 }
 
 # History settings
