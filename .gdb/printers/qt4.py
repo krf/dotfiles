@@ -26,19 +26,27 @@ class QStringPrinter:
         self.val = val
 
     def to_string(self):
-        #ret = ""
-        #i = 0
         size = self.val['d']['size']
-        #while i < size:
-        #    char = self.val['d']['data'][i]
-        #    if (char > 127):
-        #        ret += "\\u%x" % int(char)
-        #    else:
-        #        ret += chr(char)
-        #    i = i + 1
-        #return ret
-        dataAsCharPointer = self.val['d']['data'].cast(gdb.lookup_type("char").pointer())
-        return dataAsCharPointer.string(encoding = 'UTF-16', length = size * 2)
+        ret = ""
+        qt5 = 0
+        try:
+            # Qt4 has d->data, Qt5 doesn't.
+            self.val['d']['data']
+        except Exception:
+            qt5 = 1
+
+        # The QString object might be not yet initialized. In this case size is a bogus value
+        # and the following 2 lines might throw memory access error. Hence the try/catch.
+        try:
+            if qt5:
+                dataAsCharPointer = (self.val['d'] + 1).cast(gdb.lookup_type("char").pointer())
+            else:
+                dataAsCharPointer = self.val['d']['data'].cast(gdb.lookup_type("char").pointer())
+            ret = dataAsCharPointer.string(encoding = 'UTF-16', length = size * 2)
+        except Exception:
+            # swallow the exception and return empty string
+            pass
+        return ret
 
     def display_hint (self):
         return 'string'
@@ -96,21 +104,21 @@ class QListPrinter:
             #from QTypeInfo::isLarge
             isLarge = self.nodetype.sizeof > gdb.lookup_type('void').pointer().sizeof
 
-            #isStatic is not needed anymore since Qt 4.6
-            #isPointer = self.nodetype.code == gdb.TYPE_CODE_PTR
-            #
-            ##unfortunately we can't use QTypeInfo<T>::isStatic as it's all inlined, so use
-            ##this list of types that use Q_DECLARE_TYPEINFO(T, Q_MOVABLE_TYPE)
-            ##(obviously it won't work for custom types)
-            #movableTypes = ['QRect', 'QRectF', 'QString', 'QMargins', 'QLocale', 'QChar', 'QDate', 'QTime', 'QDateTime', 'QVector',
-            #    'QRegExpr', 'QPoint', 'QPointF', 'QByteArray', 'QSize', 'QSizeF', 'QBitArray', 'QLine', 'QLineF', 'QModelIndex', 'QPersitentModelIndex',
-            #    'QVariant', 'QFileInfo', 'QUrl', 'QXmlStreamAttribute', 'QXmlStreamNamespaceDeclaration', 'QXmlStreamNotationDeclaration',
-            #    'QXmlStreamEntityDeclaration']
-            #if movableTypes.count(self.nodetype.tag):
-            #    isStatic = False
-            #else:
-            #    isStatic = not isPointer
-            isStatic = False
+            isPointer = self.nodetype.code == gdb.TYPE_CODE_PTR
+
+            #unfortunately we can't use QTypeInfo<T>::isStatic as it's all inlined, so use
+            #this list of types that use Q_DECLARE_TYPEINFO(T, Q_MOVABLE_TYPE)
+            #(obviously it won't work for custom types)
+            movableTypes = ['QRect', 'QRectF', 'QString', 'QMargins', 'QLocale', 'QChar', 'QDate', 'QTime', 'QDateTime', 'QVector',
+               'QRegExpr', 'QPoint', 'QPointF', 'QByteArray', 'QSize', 'QSizeF', 'QBitArray', 'QLine', 'QLineF', 'QModelIndex', 'QPersitentModelIndex',
+               'QVariant', 'QFileInfo', 'QUrl', 'QXmlStreamAttribute', 'QXmlStreamNamespaceDeclaration', 'QXmlStreamNotationDeclaration',
+               'QXmlStreamEntityDeclaration']
+            #this list of types that use Q_DECLARE_TYPEINFO(T, Q_PRIMITIVE_TYPE) (from qglobal.h)
+            primitiveTypes = ['bool', 'char', 'signed char', 'uchar', 'short', 'ushort', 'int', 'uint', 'long', 'ulong', 'qint64', 'qunit64', 'float', 'double']
+            if movableTypes.count(self.nodetype.tag) or primitiveTypes.count(str(self.nodetype)):
+               isStatic = False
+            else:
+                isStatic = not isPointer
 
             if isLarge or isStatic: #see QList::Node::t()
                 node = array.cast(gdb.lookup_type('QList<%s>::Node' % self.nodetype).pointer())
@@ -549,6 +557,21 @@ class QCharPrinter:
     def display_hint (self):
         return 'string'
 
+class QUuidPrinter:
+
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        return "QUuid({%x-%x-%x-%x%x-%x%x%x%x%x%x})" % (self.val['data1'], self.val['data2'], self.val['data3'],
+                                            self.val['data4'][0], self.val['data4'][1],
+                                            self.val['data4'][2], self.val['data4'][3],
+                                            self.val['data4'][4], self.val['data4'][5],
+                                            self.val['data4'][6], self.val['data4'][7])
+
+    def display_hint (self):
+        return 'string'
+
 def register_qt4_printers (obj):
     if obj == None:
         obj = gdb
@@ -602,6 +625,7 @@ def build_dictionary ():
     pretty_printers_dict[re.compile('^QUrl$')] = lambda val: QUrlPrinter(val)
     pretty_printers_dict[re.compile('^QSet<.*>$')] = lambda val: QSetPrinter(val)
     pretty_printers_dict[re.compile('^QChar$')] = lambda val: QCharPrinter(val)
+    pretty_printers_dict[re.compile('^QUuid')] = lambda val: QUuidPrinter(val)
 
 
 pretty_printers_dict = {}
