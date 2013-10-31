@@ -125,6 +125,9 @@ preexec_functions+='preexec_update_git_vars.sh'
 precmd_functions+='precmd_update_git_vars.sh'
 chpwd_functions+='chpwd_update_git_vars.sh'
 
+# Enable shared history, see http://superuser.com/questions/519596/share-history-in-multiple-zsh-shell
+setopt share_history
+
 # Configure prompt
 autoload colors zsh/terminfo
 colors
