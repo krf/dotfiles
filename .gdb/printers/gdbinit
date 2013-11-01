@@ -1,6 +1,9 @@
 python
+from __future__ import print_function
+
 import os
 import sys
+
 sys.path.insert(0, os.path.expanduser('~/.gdb/printers'))
 
 from qt4 import register_qt4_printers
@@ -8,5 +11,13 @@ register_qt4_printers (None)
 
 from kde4 import register_kde4_printers
 register_kde4_printers (None)
+
+# disable loading for now, incompatible with Python 3.x
+if os.path.exists("/usr/share/gcc-4.8/python/") and False:
+    sys.path.insert(0, "/usr/share/gcc-4.8/python/")
+    from libstdcxx.v6.printers import register_libstdcxx_printers
+    register_libstdcxx_printers (None)
+else:
+    print("Warning: Could not find pretty-printers for STL!")
 
 end
