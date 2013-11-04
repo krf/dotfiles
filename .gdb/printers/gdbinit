@@ -13,11 +13,13 @@ from kde4 import register_kde4_printers
 register_kde4_printers (None)
 
 # disable loading for now, incompatible with Python 3.x
-if os.path.exists("/usr/share/gcc-4.8/python/") and False:
-    sys.path.insert(0, "/usr/share/gcc-4.8/python/")
+gccPrintersDir = "/usr/share/gcc-4.8/python/"
+if os.path.exists(gccPrintersDir) and False:
+    sys.path.insert(0, gccPrintersDir)
     from libstdcxx.v6.printers import register_libstdcxx_printers
     register_libstdcxx_printers (None)
 else:
     print("Warning: Could not find pretty-printers for STL!")
+    print("  Please check if libstdcxx/ exists inside '{0}'".format(gccPrintersDir))
 
 end
