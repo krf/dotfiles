@@ -20,6 +20,8 @@ import gdb
 import itertools
 import re
 
+from helper import *
+
 class QStringPrinter:
 
     def __init__(self, val):
@@ -57,7 +59,7 @@ class QByteArrayPrinter:
     def __init__(self, val):
         self.val = val
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, data, size):
             self.data = data
             self.size = size
@@ -66,7 +68,7 @@ class QByteArrayPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.count >= self.size:
                 raise StopIteration
             count = self.count
@@ -86,7 +88,7 @@ class QByteArrayPrinter:
 class QListPrinter:
     "Print a QList"
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, nodetype, d):
             self.nodetype = nodetype
             self.d = d
@@ -95,7 +97,7 @@ class QListPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.count >= self.d['end'] - self.d['begin']:
                 raise StopIteration
             count = self.count
@@ -149,7 +151,7 @@ class QListPrinter:
 class QVectorPrinter:
     "Print a QVector"
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, nodetype, d, p):
             self.nodetype = nodetype
             self.d = d
@@ -159,7 +161,7 @@ class QVectorPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.count >= self.p['size']:
                 raise StopIteration
             count = self.count
@@ -186,7 +188,7 @@ class QVectorPrinter:
 class QLinkedListPrinter:
     "Print a QLinkedList"
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, nodetype, begin, size):
             self.nodetype = nodetype
             self.it = begin
@@ -196,7 +198,7 @@ class QLinkedListPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.pos >= self.size:
                 raise StopIteration
 
@@ -224,7 +226,7 @@ class QLinkedListPrinter:
 class QMapPrinter:
     "Print a QMap"
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, val):
             self.val = val
             self.ktype = self.val.type.template_argument(0)
@@ -265,7 +267,7 @@ class QMapPrinter:
             node_type = gdb.lookup_type('QMapNode<%s, %s>' % (self.ktype, self.vtype)).pointer()
             return (data_node.cast(gdb.lookup_type('char').pointer()) - self.payload()).cast(node_type)
 
-        def next(self):
+        def __next__(self):
             if self.data_node == self.val['e']:
                 raise StopIteration
             node = self.concrete(self.data_node).dereference()
@@ -301,7 +303,7 @@ class QMapPrinter:
 class QHashPrinter:
     "Print a QHash"
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, val):
             self.val = val
             self.d = self.val['d']
@@ -374,7 +376,7 @@ class QHashPrinter:
             #print "nextNode: return e %s" % e
             return e
 
-        def next(self):
+        def __next__(self):
             "GDB iteration, first call returns key, second value and then jumps to the next hash node."
             if self.data_node == self.end_node:
                 raise StopIteration
@@ -512,7 +514,7 @@ class QSetPrinter:
     def __init__(self, val):
         self.val = val
 
-    class _iterator:
+    class _iterator(Iterator):
         def __init__(self, hashIterator):
             self.hashIterator = hashIterator
             self.count = 0
@@ -520,7 +522,7 @@ class QSetPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.hashIterator.data_node == self.hashIterator.end_node:
                 raise StopIteration
 
@@ -572,39 +574,13 @@ class QUuidPrinter:
     def display_hint (self):
         return 'string'
 
+pretty_printers_dict = {}
+
 def register_qt4_printers (obj):
     if obj == None:
         obj = gdb
 
-    obj.pretty_printers.append (lookup_function)
-
-def lookup_function (val):
-    "Look-up and return a pretty-printer that can print val."
-
-    # Get the type.
-    type = val.type;
-
-    # If it points to a reference, get the reference.
-    if type.code == gdb.TYPE_CODE_REF:
-        type = type.target ()
-
-    # Get the unqualified type, stripped of typedefs.
-    type = type.unqualified ().strip_typedefs ()
-
-    # Get the type name.
-    typename = type.tag
-    if typename == None:
-        return None
-
-    # Iterate over local dictionary of types to determine
-    # if a printer is registered for that type.  Return an
-    # instantiation of the printer if found.
-    for function in pretty_printers_dict:
-        if function.search (typename):
-            return pretty_printers_dict[function] (val)
-
-    # Cannot find a pretty printer.  Return None.
-    return None
+    obj.pretty_printers.append(FunctionLookup(gdb, pretty_printers_dict))
 
 def build_dictionary ():
     pretty_printers_dict[re.compile('^QString$')] = lambda val: QStringPrinter(val)
@@ -627,7 +603,5 @@ def build_dictionary ():
     pretty_printers_dict[re.compile('^QChar$')] = lambda val: QCharPrinter(val)
     pretty_printers_dict[re.compile('^QUuid')] = lambda val: QUuidPrinter(val)
 
-
-pretty_printers_dict = {}
 
 build_dictionary ()
