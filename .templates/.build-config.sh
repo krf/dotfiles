@@ -16,7 +16,9 @@ export MAKEFLAGS="-j$(cat /proc/cpuinfo | grep processor | wc -l) $MAKEFLAGS"
 export BASEDIR=~/devel
 
 # Give the build a name, e.g. master, 4.6, debug, etc
-export BUILDNAME=master
+if [ -z "$BUILDNAME" ]; then
+    export BUILDNAME=master
+fi
 
 # Set up which Qt to use
 # Use the system Qt, adjust path as required

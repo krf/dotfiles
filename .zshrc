@@ -51,12 +51,21 @@ alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu
 # Aliases (Vim)
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
-# Aliases (development)
-alias env-devel='cd ~/devel/src && source ~/.bashrc_devel'
-
 # Functions
+# NAME: mkcd - mkdir and cd into it
+# SYNOPSIS: mkcd DIRECTORY
 function mkcd() {
     [ -n "$1" ] && mkdir -p "$@" && cd "$1";
+}
+
+# Functions (development)
+# NAME: env-devel - Set up development environment
+# SYNOPSIS: env-devel [ENV]
+# OPTIONS:
+#   ENV: E.g. 'master' or 'stable', sets the installation directory. Defaults to 'master'
+function env-devel() {
+    cd ~/devel/src
+    BUILDNAME="$1" source ~/.bashrc_devel
 }
 
 # History settings
