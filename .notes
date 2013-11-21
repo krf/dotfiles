@@ -4,6 +4,11 @@ perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup 
 perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
 perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regextype posix-egrep -regex ".+cpp|.+h|.+ui")
 
+# fix automoc warnings (brute-force method)
+Pipe compile/autmoc output to file 'a'. Then:
+$ grep "No output generated" a | grep -Po1 '(\w+)\.cpp' | sed 's/\.cpp//' > b
+$ for i in $(cat b); do perl -e "s#\"$i\.moc\"#\"moc_$i\.cpp\"#g;" -pi $(find . -type f -name "*.cpp"); done
+
 ### Qt compile
 # normal
 time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -fast -no-phonon -no-qt3support -opensource -confirm-license && make sub-src)
