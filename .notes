@@ -1,8 +1,8 @@
 ### Sed magic examples
-perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*py")
-perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
-perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
-perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regextype posix-egrep -regex ".+cpp|.+h|.+ui")
+$ perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*py")
+$ perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
+$ perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
+$ perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regextype posix-egrep -regex ".+cpp|.+h|.+ui")
 
 # fix automoc warnings (brute-force method)
 Pipe compile/autmoc output to file 'a'. Then:
@@ -11,9 +11,9 @@ $ for i in $(cat b); do perl -e "s#\"$i\.moc\"#\"moc_$i\.cpp\"#g;" -pi $(find . 
 
 ### Qt compile
 # normal
-time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -fast -no-phonon -no-qt3support -opensource -confirm-license && make sub-src)
+$ time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -fast -no-phonon -no-qt3support -opensource -confirm-license && make sub-src)
 # extended
-time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -webkit -xmlpatterns -scripttools -fast -plugin-sql-mysql -plugin-sql-psql -plugin-sql-sqlite -exceptions -qt3support -developer-build -opensource -confirm-license && make && make install)
+$ time (../../src/qt/configure -shared -debug -developer-build -nomake demos -nomake examples -webkit -xmlpatterns -scripttools -fast -plugin-sql-mysql -plugin-sql-psql -plugin-sql-sqlite -exceptions -qt3support -developer-build -opensource -confirm-license && make && make install)
 
 ### Aptitude
 Searches and pattern matching in Aptitude is different:
