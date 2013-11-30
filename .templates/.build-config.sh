@@ -49,6 +49,7 @@ export PYTHON_SITE_PACKAGES_DIR=$KDEDIR/lib/python2.6/site-packages/PyKDE4
 
 # Export the standard paths to include KDE
 export PATH=$KDEDIR/bin:$PATH
+export MANPATH=$KDEDIR/share/man:$MANPATH
 export LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
 export PKG_CONFIG_PATH=$KDEDIR/lib/pkgconfig:$PKG_CONFIG_PATH
 
