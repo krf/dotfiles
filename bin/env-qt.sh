@@ -21,7 +21,7 @@ function __env-qt_main() {
         return
     fi
 
-    QTDIR="$1"
+    QTDIR="$(readlink -m $1)"
 
     echo "Trying to find Qt's qmake..."
     if "$QTDIR/bin/qmake" --version; then
