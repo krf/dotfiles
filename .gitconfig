@@ -58,8 +58,10 @@
 # URL alias for KDE
 [url "git://anongit.kde.org/"]
 	insteadOf = kde://
+	insteadOf = kde:
 [url "ssh://git@git.kde.org/"]
 	pushInsteadOf = kde://
+	pushInsteadOf = kde:
 	pushInsteadOf = git://anongit.kde.org/
 	pushInsteadOf = git://anongit1.kde.org/
 
