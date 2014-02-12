@@ -4,7 +4,8 @@ from __future__ import print_function
 import os
 import sys
 
-sys.path.insert(0, os.path.expanduser('~/.gdb/printers'))
+# let's use the printers directly from our checkout
+sys.path.insert(0, os.path.expanduser('~/devel/src/kdevelop/debuggers/gdb/printers'))
 
 from qt4 import register_qt4_printers
 register_qt4_printers (None)
