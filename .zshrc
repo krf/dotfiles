@@ -1,6 +1,6 @@
 # Exports
 export EDITOR="vim" # Set default editor
-export LC_MESSAGES=C # Console messages in english please
+export LANGUAGE=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
 export VALGRIND_OPTS="\
@@ -157,7 +157,7 @@ fi
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
  %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
- %{$fg[green]%}"'$(LC_MESSAGES=C ls -lah | grep $PROMPT_GREP_ARGS total | tr -d total\ )'"%{${reset_color}%}\
+ %{$fg[green]%}"'$(LANGUAGE=C ls -lah | grep $PROMPT_GREP_ARGS total | tr -d total\ )'"%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
 RPROMPT="%{$fg[white]%}${gitprompt} %T%{${reset_color}%}" # prompt for right side of screen
