@@ -23,6 +23,7 @@ alias help=run-help
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias grep='grep --color=always'; fi
 alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
+test -x /usr/share/vim/vim74/macros/less.sh && alias less='/usr/share/vim/vim74/macros/less.sh'
 alias ll='ls -l'
 alias la='ls -al'
 # check if ls supports --color
