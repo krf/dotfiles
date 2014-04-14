@@ -171,6 +171,9 @@ for zshrc_snipplet in ~/.zsh.d/S[0-9][0-9]*[^~] ; do
     source $zshrc_snipplet
 done
 
+# Modules
+zmodload zsh/mathfunc
+
 # Completion Styles
 
 # list of completers to use
