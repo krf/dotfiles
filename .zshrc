@@ -46,7 +46,7 @@ if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
 # Aliases (convenience)
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
-alias whatismyip="wget -qO - http://checkip.dyndns.org | sed 's/[a-zA-Z<>/ :]//g'"
+alias whatismyip="wget -qO- checkip.dyndns.org | grep --color=never -Eo '[0-9\.]+' | xargs -I{} sh -c 'echo \"IP: {}\"; echo \"Name: \$(dig -x {} +short)\"'"
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"
 
 # Aliases (Vim)
