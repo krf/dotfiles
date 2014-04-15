@@ -19,13 +19,13 @@ alias po=popd
 alias d='dirs -v'
 alias h=history
 alias help=run-help
-# check if grep supports --color
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias grep='grep --color=auto'; fi
 alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
 test -x /usr/share/vim/vim74/macros/less.sh && alias less='/usr/share/vim/vim74/macros/less.sh'
 alias ll='ls -l'
 alias la='ls -al'
+if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=auto'; fi
 alias netcat='nc'
 alias fnd="find . -iname"
 alias ..='cd ..'
