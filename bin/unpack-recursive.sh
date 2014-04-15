@@ -19,10 +19,14 @@ for file in $FILES; do
         tar xf $file &&
             echo "Deleting file: $file" &&
             rm $file
-    fi
-
-    if [ -d "$file" ]; then
-        unrar e -o- $file/*.rar
+    elif [[ "$file" == *.7z ]]; then
+        echo "Unzipping file: $file"
+        7za e -o- $file
+    elif [[ "$file" == *.rar ]]; then
+        echo "Unraring file: $file"
+        unrar e -o- $file
+    elif [ -d "$file" ]; then
+        unpack-recursive.sh $file/*
     fi
 done
 
