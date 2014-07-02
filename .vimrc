@@ -178,3 +178,6 @@ inoremap <End> <C-o>g<End>
 
 " wrap words
 set wrap lbr
+
+" Enable spell-checking
+set spell spelllang=en_us
