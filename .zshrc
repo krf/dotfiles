@@ -68,7 +68,7 @@ function env-devel() {
 }
 
 # History settings
-HISTSIZE=1000 # Set command search history
+HISTSIZE=10000 # Set command search history
 HISTFILE=~/.zsh_history
 SAVEHIST=100
 
