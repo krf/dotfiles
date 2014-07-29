@@ -3,6 +3,7 @@ $ perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*py")
 $ perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
 $ perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
 $ perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regextype posix-egrep -regex ".+cpp|.+h|.+ui")
+$ perl -i -0pe '~s/\n+$/\n/' $(find -iname "*cpp") # remove extra newlines at EOF
 
 # fix automoc warnings (brute-force method)
 Pipe compile/autmoc output to file 'a'. Then:
