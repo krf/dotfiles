@@ -17,6 +17,7 @@ alias mkdir='nocorrect mkdir' # ~ on on mkdir
 alias pu=pushd
 alias po=popd
 alias d='dirs -v'
+alias ducks='du -cks * | sort -rn | head'
 alias h=history
 alias help=run-help
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias grep='grep --color=auto'; fi
