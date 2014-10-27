@@ -31,12 +31,11 @@ alias netcat='nc'
 alias fnd="find . -iname"
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
-alias api='sudo aptitude install'
-alias apr='sudo aptitude remove'
-alias app='sudo aptitude purge'
-alias aps='aptitude search'
-alias apt='sudo aptitude'
-alias apu='sudo aptitude update; sudo aptitude full-upgrade'
+alias api='sudo apt-get install'
+alias apr='sudo apt-get remove'
+alias app='sudo apt-get remove --purge'
+alias aps='apt-cache search'
+alias apu='sudo apt-get update; sudo apt-get upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 
