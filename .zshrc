@@ -35,7 +35,7 @@ alias api='sudo apt-get install'
 alias apr='sudo apt-get remove'
 alias app='sudo apt-get remove --purge'
 alias aps='apt-cache search'
-alias apu='sudo apt-get update; sudo apt-get upgrade'
+alias apu='sudo apt-get update; sudo apt-get dist-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 
