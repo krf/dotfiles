@@ -50,8 +50,6 @@
 
 	edit-last-commit = !vim `git diff-tree -r --name-only HEAD HEAD~1`
 
-	post-review = !post-review -o --guess-summary --guess-description
-
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
 # URL alias for KDE
