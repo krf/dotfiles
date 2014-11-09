@@ -1,0 +1,10 @@
+# hardstatus line
+hardstatus alwayslastline
+backtick 1 60 60 ${HOME}/.screen_hardstatus
+hardstatus string "%{Gk}%H: %{+s y}%1` | %=%n: %t%= | %m/%d %c | %{+b}%l"
+
+# no copyright message
+startup_message off
+
+# use terminal emulator buffer (allows proper scrolling)
+termcapinfo xterm|xterms|xs|rxvt ti@:te@
