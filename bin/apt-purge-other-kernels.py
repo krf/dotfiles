@@ -26,7 +26,7 @@ def main():
     packages = [pkg for pkg in packages if not running_kernel_version in pkg]
 
     if len(packages) > 0:
-        cmd = ["sudo", "aptitude", "purge", "-P"]
+        cmd = ["sudo", "apt-get", "purge"]
         cmd += packages
 
         print("Executing '{0}'".format(" ".join(cmd)))
