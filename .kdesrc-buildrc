@@ -13,7 +13,7 @@ global
 
     #install-session-driver true
 
-    custom-build-command ninja
+    custom-build-command ninja -j20
     cmake-options -DCMAKE_BUILD_TYPE:STRING=debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja"
     branch-group kf5-qt5
 
