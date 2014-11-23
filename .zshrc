@@ -10,8 +10,9 @@ export VALGRIND_OPTS="\
 export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $? )
 
 # Aliases (shortcuts)
-alias mv='nocorrect mv' # no spelling correction on mv
 alias cp='nocorrect cp' # ~ on cp
+alias dmesg='dmesg -T'
+alias mv='nocorrect mv' # no spelling correction on mv
 test -x /usr/bin/most && alias man='man -P most'
 alias mkdir='nocorrect mkdir' # ~ on on mkdir
 alias pu=pushd
