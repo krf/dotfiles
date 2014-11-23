@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PNAME="kded4"
-PID=$(pidof kded4)
+PID=$(pidof ${PNAME})
 if [ $? != 0 ]; then
     echo "Error: ${PNAME} not running"
     exit 1
