@@ -11,12 +11,11 @@
 [apply]
 	whitespace = fix
 
-[diff]
-	tool = kompare
-	guitool = kdiff3
-
 [diff "odf"]
 	textconv=odt2txt
+
+[merge]
+	guitool = kdiff3
 
 [commit]
 	template = ~/.commit-template
