@@ -15,6 +15,7 @@
 	textconv=odt2txt
 
 [merge]
+	tool = kdiff3
 	guitool = kdiff3
 
 [commit]
