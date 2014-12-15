@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# fetch has -q for quiet you can use -o - for stdout and -T for timeout
-# openbsd ftp does http
 ########################################################################
 ####  Script Name: inxi
-####  Version: 2.2.4
-####  Date: 2014-09-10
+####  Version: 2.2.16
+####  Date: 2014-11-03
 ####  Patch Number: 00
 ########################################################################
 ####  SPECIAL THANKS
@@ -55,7 +53,7 @@
 ####  DEPENDENCIES
 ####  * bash >=3.0 (bash); df, readlink, stty, tr, uname, wc (coreutils);
 ####    gawk (gawk); grep (grep); lspci (pciutils);
-####    ps, uptime (procps); find (findutils)
+####    ps, find (findutils)
 ####  * Also the proc filesystem should be present and mounted for Linux
 ####  * Some features, like -M and -d will not work, or will work incompletely,
 ####    if /sys is missing
@@ -76,6 +74,7 @@
 ####  -G - full graphics output requires:  glxinfo (mesa-utils); xdpyinfo (X11-utils);
 ####       xrandr (x11-xserver-utils)
 ####  -i - IP information, local/wan - ip (iproute) legacy, not used if ip present: ifconfig (net-tools)
+####  -I - uptime (procps, check Debian if changed)
 ####  -Ix - view current runlevel while not in X window system (or with -x): runlevel (sysvinit)
 ####  -m - all systems, dmidecode, unless someone can find a better way.
 ####  -M - for older systems whose kernel does not have /sys data for machine, dmidecode (dmidecode)
@@ -274,6 +273,7 @@ A_DISPLAY_SERVER_DATA=''
 
 ### BOOLEANS ###
 ## standard boolean flags ##
+B_BSD_DISK_SET='false'
 B_BSD_RAID='false'
 B_COLOR_SCHEME_SET='false'
 B_CONSOLE_IRC='false'
@@ -798,7 +798,7 @@ initialize_data()
 	eval $LOGFS
 	BSD_VERSION=$( uname -s 2>/dev/null | tr '[A-Z]' '[a-z]' )
 	# note: archbsd says they are a freebsd distro, so assuming it's the same as freebsd
-	if [[ -z ${BSD_VERSION/*bsd*/} || -z ${BSD_VERSION/*darwin*/} ]];then
+	if [[ -z ${BSD_VERSION/*bsd*/} || -z ${BSD_VERSION/*dragonfly*/} || -z ${BSD_VERSION/*darwin*/} ]];then
 		if [[ -z ${BSD_VERSION/*openbsd*/} ]];then
 			BSD_VERSION='openbsd'
 		elif [[ -z ${BSD_VERSION/*darwin*/} ]];then
@@ -827,11 +827,11 @@ initialize_data()
 	initialize_paths
 	
 	# set downloaders. 
-	if [[ -z $( type -p wget ) ]];then
+	if ! type -p wget &>/dev/null;then
 		# first check for bsd stuff
-		if [[ -n $( type -p fetch ) ]];then
+		if type -p fetch &>/dev/null;then
 			DOWNLOADER='fetch'
-		elif -n $( type -p curl ) ]];then
+		elif type -p curl &>/dev/null;then
 			DOWNLOADER='curl'
 		elif [[ $BSD_VERSION == 'openbsd' && -n $( type -p ftp ) ]];then
 			DOWNLOADER='ftp'
@@ -1063,7 +1063,7 @@ check_required_apps()
 	eval $LOGFS
 	local app_name=''
 	# bc removed from deps for now
-	local depends="df gawk grep ps readlink tr uname uptime wc"
+	local depends="df gawk grep ps readlink tr uname wc"
 	
 	if [[ -z $BSD_TYPE  ]];then
 		depends="$depends lspci"
@@ -1454,7 +1454,10 @@ log_function_data()
 				;;
 			cat)
 				if [[ $B_LOG_FULL_DATA == 'true' ]];then
-					logged_data="\n$line\nFull file data: cat $2\n\n$( cat $2 )\n$line\n"
+					for cat_file in $2
+					do
+						logged_data="$logged_data\n$line\nFull file data: cat $cat_file\n\n$( cat $cat_file )\n$line\n"
+					done
 					spacer=''
 				fi
 				;;
@@ -1640,7 +1643,7 @@ debug_data_collector()
 		host="-no-host"
 	fi
 	if [[ -n $BSD_TYPE ]];then
-		bsd_string="-$BSD_TYPE"
+		bsd_string="-$BSD_TYPE-$BSD_VERSION"
 	fi
 	if [[ $( whoami ) == 'root' ]];then
 		root_string='-root'
@@ -1690,6 +1693,8 @@ debug_data_collector()
 		# fdisk <disk>
 		dmidecode &> $debug_data_dir/dmidecode.txt
 		
+		get_repo_data "$SCRIPT_DATA_DIR/$debug_data_dir"
+		
 		if type -p shopt &>/dev/null;then
 			shopt -s nullglob;a_distro_ids=(/etc/*[-_]{release,version});shopt -u nullglob;echo ${a_distro_ids[@]} &> $debug_data_dir/etc-distro-files.txt
 			for distro_file in ${a_distro_ids[@]} /etc/issue
@@ -1711,6 +1716,7 @@ debug_data_collector()
 		lspci -mmnnv &> $debug_data_dir/lspci-mmnnv.txt
 		lspci -v &> $debug_data_dir/lspci-v.txt
 		lsusb &> $debug_data_dir/lsusb.txt
+		ls /sys &> $debug_data_dir/ls-sys.txt
 		ps aux &> $debug_data_dir/ps-aux.txt
 		runlevel &> $debug_data_dir/runlevel.txt
 		systemctl list-units &> $debug_data_dir/systemctl-list-units.txt
@@ -1890,7 +1896,7 @@ debug_data_collector()
 			gpart list &> $debug_data_dir/bsd-gpart-list.txt
 			gpart show &> $debug_data_dir/bsd-gpart-show.txt
 			gpart status &> $debug_data_dir/bsd-gpart-status.txt
-			swapctl -l &> $debug_data_dir/bsd-swapctl-l.txt
+			swapctl -l -k &> $debug_data_dir/bsd-swapctl-l-k.txt
 			swapon -s &> $debug_data_dir/swapon-s.txt
 			sysctl -b kern.geom.conftxt  &> $debug_data_dir/bsd-sysctl-b-kern.geom.conftxt.txt
 			sysctl -b kern.geom.confxml &> $debug_data_dir/bsd-sysctl-b-kern.geom.confxml.txt
@@ -2027,10 +2033,17 @@ check_recommends_user_output()
 	echo 
 	check_recommends_items 'downloaders'
 	
-	echo 'Test Six: System Directories for Various Information.' 
-	print_lines_basic "0" "" "If one of these directories is missing, $SCRIPT_NAME will have incomplete output:"
+	echo 'Test Six: System Directories for Various Information.'
+	echo '(Unless otherwise noted, these are for GNU/Linux systems)' 
+	print_lines_basic "0" "" "If one of these directories is missing, $SCRIPT_NAME may have incomplete output:"
 	echo 
 	check_recommends_items 'system-dirs'
+	
+	echo 'Test Seven: System Files for Various Information.'
+	echo '(Unless otherwise noted, these are for GNU/Linux systems)' 
+	print_lines_basic "0" "" "If one of these files is missing, $SCRIPT_NAME may have incomplete output:"
+	echo 
+	check_recommends_items 'system-files'
 	
 	echo 'All tests completed.' 
 }
@@ -2054,7 +2067,6 @@ check_recommends_items()
 	sed:sed~sed~sed~:string_replace 
 	tr:coreutils~coreutils~coreutils~:character_replace 
 	uname:uname~coreutils~coreutils~:kernel_data 
-	uptime:procps~procps~procps~: 
 	wc:coreutils~coreutils~coreutils~:word_character_count
 	'
 	local x_recommends='
@@ -2075,6 +2087,7 @@ check_recommends_items()
 	modinfo:module-init-tools~module-init-tools~module-init-tools~:-Ax,-Nx_module_version 
 	runlevel:sysvinit~sysvinit~systemd~:-I_runlevel
 	sudo:sudo~sudo~sudo~:-Dx_hddtemp-user;-o_file-user
+	uptime:procps~procps~procps~:-I_uptime_(check_which_package_owns_Debian)
 	'
 	
 	local downloaders="
@@ -2087,8 +2100,22 @@ check_recommends_items()
 	/dev:-l,-u,-o,-p,-P,-D_disk_partition_data
 	/dev/disk/by-label:-l,-o,-p,-P_partition_labels
 	/dev/disk/by-uuid:-u,-o,-p,-P_partition_uuid
-	/var/run/dmesg.boot:-C,-f_(BSD_only)
 	'
+	local recommended_files="
+	$FILE_ASOUND_DEVICE:-A_sound_card_data
+	$FILE_ASOUND_VERSION:-A_ALSA_data
+	$FILE_CPUINFO:-C_cpu_data
+	$FILE_LSB_RELEASE:-S_distro_version_data_[deprecated]
+	$FILE_MDSTAT:-R_mdraid_data
+	$FILE_MEMINFO:-I_memory_data
+	$FILE_OS_RELEASE:-S_distro_version_data
+	$FILE_PARTITIONS:-p,-P_partitions_data
+	$FILE_MODULES:-G_module_data
+	$FILE_MOUNTS:-P,-p_partition_advanced_data
+	$FILE_DMESG_BOOT:-D,-d_disk_data_[BSD_only]
+	$FILE_SCSI:-D_Advanced_hard_disk_data_[used_rarely]
+	$FILE_XORG_LOG:-G_graphics_driver_load_status
+	"
 	
 	if [[ -n $COLS_INNER ]];then
 		if [[ $COLS_INNER -ge 90 ]];then
@@ -2141,6 +2168,13 @@ check_recommends_items()
 			missing_string='system directories'
 			type='directories'
 			;;
+		system-files)
+			item_list=$recommended_files
+			item_string='System file'
+			item_string=''
+			missing_string='system files'
+			type='files'
+			;;
 	esac
 	# great trick from: http://ideatrash.net/2011/01/bash-string-padding-with-sed.html
 	# left pad: sed -e :a -e 's/^.\{1,80\}$/& /;ta'
@@ -2176,7 +2210,7 @@ check_recommends_items()
 		fi
 		
 		starter="$( sed -e :a -e 's/^.\{1,'$width'\}$/&./;ta' <<< $print_string )"
-		if [[ -z $( grep '^/' <<< $application ) && -n $location ]] || [[ -d $application ]];then
+		if [[ -z $( grep '^/' <<< $application ) && -n $location ]] || [[ -d $application || -f $application ]];then
 			if [[ -n $location ]];then
 				finisher=" $location"
 			else
@@ -2205,8 +2239,10 @@ check_recommends_items()
 				echo "Application: $application"
 				print_lines_basic "0" "" "To add to your system, install the proper distribution package for your system:"
 				print_lines_basic "0" "" "Debian/Ubuntu:^$package_deb^:: Arch Linux:^$package_pacman^:: Redhat/Fedora/Suse:^$package_rpm"
-			else
+			elif [[ $type == 'directories' ]];then
 				echo "Directory: $application"
+			elif [[ $type == 'files' ]];then
+				echo "File: $application"
 			fi
 		done
 		if [[ $item_string == 'System directory' ]];then
@@ -2754,7 +2790,7 @@ show_options()
 	print_lines_basic "2" "97" "Console IRC running in X - like irssi in xTerm"
 	print_lines_basic "2" "98" "Console IRC not in  X"
 	print_lines_basic "2" "99" "Global - Overrides/removes all settings. Setting specific removes global."
-	print_lines_basic "1" "-C" "CPU output, including per CPU clockspeed (if available)."
+	print_lines_basic "1" "-C" "CPU output, including per CPU clockspeed and max CPU speed (if available)."
 	print_lines_basic "1" "-d" "Optical drive data. Same as -Dd. See also -x and -xx."
 	print_lines_basic "1" "-D" "Full hard Disk info, not only model, ie: /dev/sda ST380817AS 80.0GB. See also -x and -xx. Disk total used percentage includes swap partition size(s)."
 	print_lines_basic "1" "-f" "All cpu flags, triggers -C. Not shown with -F to avoid spamming. ARM cpus show 'features'."
@@ -2813,6 +2849,7 @@ show_options()
 	fi
 	print_lines_basic "1" "-xx" "Show extra, extra data (only works with verbose or line output, not short form):"
 	print_lines_basic "2" "-A" "Chip vendor:product ID for each audio device."
+	print_lines_basic "2" "-C" "Minimum CPU speed, if available."
 	print_lines_basic "2" "-D" "Disk serial number."
 	print_lines_basic "2" "-G" "Chip vendor:product ID for each video card."
 	print_lines_basic "2" "-I" "Other detected installed gcc versions (if present). System default runlevel. Adds parent program (or tty) for shell info if not in IRC (like Konsole or Gterm). Adds Init/RC (if found) version number."
@@ -3082,7 +3119,12 @@ get_start_client()
 		case $App_Working_Name in
 			# bsd will never use this section
 			bash|dash|sh|python*|perl*)	# We want to know who wrapped it into the shell or perl.
-				pppid="$( ps -p $PPID -o ppid --no-headers | sed 's/[[:space:]]//g' )"
+				if [[ $BSD_TYPE != 'bsd' ]];then
+					pppid=$( ps -p $PPID -o ppid --no-headers 2>/dev/null | gawk '{print $NF}' )
+				else
+					# without --no-headers we need the second line
+					pppid=$( ps -p $PPID -o ppid 2>/dev/null | gawk '$1 ~ /^[0-9]+/ {print $5}' )
+				fi
 				if [[ -n $pppid && -f /proc/$pppid/exe ]];then
 					Irc_Client_Path="$( readlink /proc/$pppid/exe )"
 					irc_client_path_lower=$( tr '[A-Z]' '[a-z]' <<< $Irc_Client_Path )
@@ -3578,7 +3620,7 @@ get_audio_data()
 				modules[audioCard] = modules[audioCard] gensub( /(.*): (.*)/ ,"\\2" ,"g" ,$0 ) ""
 			}
 			else if (/^[[:space:]]*I\/O/) {
-				portsTemp = gensub(/\t*I\/O ports at (.*) \[.*\]/,"\\1","g",$0)
+				portsTemp = gensub(/\t*I\/O ports at ([a-z0-9]+)(| \[.*\])/,"\\1","g",$0)
 				ports[audioCard] = ports[audioCard] portsTemp " "
 			}
 		}
@@ -3663,7 +3705,7 @@ get_audio_usb_data()
 		lsusb_data=$( lsusb 2>/dev/null )
 	fi
 	log_function_data 'raw' "usb_data:\n$lsusb_data"
-	if [[ -n $lsusb_data ]];then
+	if [[ -n $lsusb_data && -d /proc/asound/ ]];then
 		# for every sound card symlink in /proc/asound - display information about it
 		for usb_proc_file in /proc/asound/*
 		do
@@ -3858,14 +3900,21 @@ get_cpu_data()
 {
 	eval $LOGFS
 	local i='' j='' cpu_array_nu='' a_cpu_working='' multi_cpu='' bits='' a_temp=''
-	local bsd_cpu_flags=''
+	local bsd_cpu_flags='' min_speed='' max_speed=''
+	
+	if [[ -f  /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq ]];then
+		max_speed=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq)
+		if [[ -f  /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq ]];then
+			min_speed=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq)
+		fi
+	fi
 
 	if [[ $B_CPUINFO_FILE == 'true' ]];then
 		# stop script for a bit to let cpu slow down before parsing cpu /proc file
 		sleep $CPU_SLEEP
 		IFS=$'\n'
 		A_CPU_DATA=( $( 
-		gawk -F': ' '
+		gawk -v cpuMin="$min_speed" -v cpuMax="$max_speed" -F': ' '
 		BEGIN {
 			IGNORECASE=1
 			# need to prime nr for arm cpus, which do not have processor number output in some cases
@@ -3874,6 +3923,9 @@ get_cpu_data()
 			bArm = "false"
 			# ARM cpus are erratic in /proc/cpuinfo this hack can sometimes resolve it. Linux only.
 			sysSpeed="'$(get_cpu_speed_hack)'"
+			speed = 0
+			max = 0
+			min = 0
 		}
 		# TAKE STRONGER NOTE: \t+ does NOT always work, MUST be [ \t]+
 		# TAKE NOTE: \t+ will work for $FILE_CPUINFO, but SOME ARBITRARY FILE used for TESTING might contain SPACES!
@@ -3905,12 +3957,12 @@ get_cpu_data()
 			}
 		}
 		/^cpu MHz|^clock\t+:/ {
-			if (!min) {
-				min = $NF
+			if (speed == 0) {
+				speed = $NF
 			}
 			else {
-				if ($NF < min) {
-					min = $NF
+				if ($NF < speed) {
+					speed = $NF
 				}
 			}
 			if ($NF > max) {
@@ -3953,20 +4005,21 @@ get_cpu_data()
 				}
 				print cpu[i, "model"] "," cpu[i, "speed"] "," cpu[i, "cache"] "," cpu[i, "flags"] "," cpu[i, "bogomips"] ","  cpu[nr, "vendor"] "," bArm
 			}
-			
-			# this is / was used in inxi short output only, but when it is N/A, need to use the previous array
-			# value, from above, the actual speed that is, for short output, key 0.
-			if (!min) {
-				print "N/A"
-				exit
+			if (cpuMin != "") {
+				min=cpuMin/1000
+			}
+			if (cpuMax != "") {
+				max=cpuMax/1000
+			}
+			# create last array index, to be used for min/max output
+			sub(/\.[0-9]+$/,"",max)
+			sub(/\.[0-9]+$/,"",speed)
+			sub(/\.[0-9]+$/,"",min)
+			if (speed == 0) {
+				print "N/A," min "," max
 			}
 			else {
-				if (min != max) {
-					printf("Min:%s%s Max:%s%s\n", min, "Mhz", max, "Mhz")
-				}
-				else {
-					printf("%s %s\n", max, "Mhz")
-				}
+				print speed "," min "," max 
 			}
 		} 
 		' $FILE_CPUINFO ) )
@@ -3999,7 +4052,7 @@ get_cpu_data_bsd()
 	eval $LOGFS
 
 	local bsd_cpu_flags=$( get_cpu_flags_bsd )
-	local gawk_fs=': '
+	local gawk_fs=': ' cpu_max=''
 	
 	if [[ $BSD_VERSION == 'openbsd' ]];then
 		gawk_fs='='
@@ -4007,9 +4060,30 @@ get_cpu_data_bsd()
 	# avoid setting this for systems where you have no read/execute permissions
 	# might be cases where the dmesg boot file was readable but sysctl perms failed
 	if [[ -n $Sysctl_a_Data || -n $bsd_cpu_flags ]];then
+		if [[ -n $Dmesg_Boot_Data ]];then
+			cpu_max=$( gawk -F ':' '
+			BEGIN {
+			IGNORECASE=1
+			}
+			# NOTE: freebsd may say: 2300-MHz, so check for dash as well
+			$1 ~ /^(CPU|cpu0)$/ {
+				if ( $NF ~ /[^0-9\.][0-9\.]+[\-[:space:]]*[MG]Hz/) {
+					max=gensub(/.*[^0-9\.]([0-9\.]+[\-[:space:]]*[MG]Hz).*/,"\\1",1,$NF)
+					if (max ~ /MHz/) {
+						sub(/[-[:space:]]*MHz/,"",max)
+					}
+					if (max ~ /GHz/) {
+						sub(/[-[:space:]]*GHz/,"",max)
+						max=max*1000
+					}
+					print max
+					exit
+				}
+			}' <<< "$Dmesg_Boot_Data" )
+		fi
 		IFS=$'\n'
 		A_CPU_DATA=( $( 
-		gawk -F "$gawk_fs" -v bsdVersion=$BSD_VERSION -v cpuFlags="$bsd_cpu_flags" '
+		gawk -F "$gawk_fs" -v bsdVersion=$BSD_VERSION -v cpuFlags="$bsd_cpu_flags" -v cpuMax="$cpu_max" '
 		BEGIN {
 			IGNORECASE=1
 			cpuModel=""
@@ -4018,6 +4092,8 @@ get_cpu_data_bsd()
 			cpuBogomips=""
 			cpuVendor=""
 			bSwitchFs="false"
+			min=0
+			max=0
 		}
 		/^hw.model/ && ( bsdVersion != "darwin" ) {
 			gsub(/'"$BAN_LIST_NORMAL"'/, "", $NF )
@@ -4026,22 +4102,33 @@ get_cpu_data_bsd()
 			sub(/[a-z]+-core/, "", $NF )
 			gsub(/^ +| +$|\"/, "", $NF)
 			gsub(/ [ \t]+/, " ", $NF)
+			# cut L2 cache/cpu max speed out of model string, if available
 			if ( $NF ~ /[0-9]+[[:space:]]*[KM]B[[:space:]]+L2 cache/) {
-				cpuCache=gensub(/.*[^0-9]([0-9]+[[:space:]]*[KM]B)[[:space:]]+L2 cach.*/,"\\1",1,$NV)
+				cpuCache=gensub(/.*[^0-9]([0-9]+[[:space:]]*[KM]B)[[:space:]]+L2 cach.*/,"\\1",1,$NF)
+			}
+			if ( $NF ~ /[^0-9\.][0-9\.]+[\-[:space:]]*[MG]Hz/) {
+				max=gensub(/.*[^0-9\.]([0-9\.]+[\-[:space:]]*[MG]Hz).*/,"\\1",1,$NF)
+				if (max ~ /MHz/) {
+					sub(/[\-[:space:]]*MHz/,"",max)
+				}
+				if (max ~ /GHz/) {
+					sub(/[\-[:space:]]*GHz/,"",max)
+					max=max*1000
+				}
 			}
 			if ( $NF ~ /\)$/ ){
 				sub(/[[:space:]]*\(.*\)$/,"",$NF)
 			}
 			cpuModel=$NF
-			if ( cpuClock != "" ) {
-				exit
-			}
+# 			if ( cpuClock != "" ) {
+# 				exit
+# 			}
 		}
 		/^hw.clock/ {
 			cpuClock=$NF
-			if ( cpuModel != "" ) {
-				exit
-			}
+# 			if ( cpuModel != "" ) {
+# 				exit
+# 			}
 		}
 		/^hw.cpufrequency/ {
 			cpuClock = $NF / 1000000
@@ -4056,6 +4143,15 @@ get_cpu_data_bsd()
 		/^machdep.cpu.vendor/ {
 			cpuVendor=$NF
 		}
+		# Freebsd does some voltage hacking to actually run at lowest listed frequencies.
+		# The cpu does not actually support all the speeds output here but works in freebsd. 
+		/^dev.cpu.0.freq_levels/ {
+			gsub(/^[[:space:]]+|\/[0-9]+|[[:space:]]+$/,"",$NF)
+			if ( $NF ~ /[0-9]+[[:space:]]+[0-9]+/ ) {
+				min=gensub(/.*[[:space:]]([0-9]+)$/,"\\1",1,$NF)
+				max=gensub(/^([0-9]+)[[:space:]].*/,"\\1",1,$NF)
+			}
+		}
 		/^machdep.cpu.brand_string/ {
 			gsub(/'"$BAN_LIST_NORMAL"'/, "", $NF )
 			gsub(/'"$BAN_LIST_CPU"'/, "", $NF )
@@ -4067,8 +4163,18 @@ get_cpu_data_bsd()
 			cpuModel=$NF
 		}
 		END {
+			if ( max == 0 && cpuMax != "" ) {
+				max=cpuMax
+			}
+			if ( cpuClock == "" ) {
+				cpuClock="N/A"
+			}
+			sub(/\.[0-9]+/,"",cpuClock)
+			sub(/\.[0-9]+/,"",min)
+			sub(/\.[0-9]+/,"",max)
 			print cpuModel "," cpuClock "," cpuCache "," cpuFlags "," cpuBogomips ","  cpuVendor
-			print "N/A"
+			# triggers print case
+			print cpuClock "," min "," max
 		}' <<< "$Sysctl_a_Data" ) )
 		IFS="$ORIGINAL_IFS"
 	fi
@@ -4084,14 +4190,14 @@ get_cpu_flags_bsd()
 	local gawk_fs=':'
 	
 	if [[ -n $Dmesg_Boot_Data ]];then
-		cpu_flags=$( gawk -v bsdVersion=$BSD_VERSION -F ":" '
+		cpu_flags=$( gawk -v bsdVersion="$BSD_VERSION" -F ":" '
 		BEGIN {
 			IGNORECASE=1
 			cpuFlags=""
 		}
 		/^(CPU:|cpu0:)/ {
 			while ( getline && !/memory|real mem/  ) {
-				if ( $1 ~ /Features/ || ( bsdVersion == "openbsd" && $0 ~ /^cpu0.*,[a-z][a-z][a-z],[a-z][a-z][a-z],/ ) ) {
+				if ( $1 ~ /Features/ || ( bsdVersion == "openbsd" && $0 ~ /^cpu0.*[[:space:]][a-z][a-z][a-z][[:space:]][a-z][a-z][a-z][[:space:]]/ ) ) {
 					# clean up odd stuff like <b23>
 					gsub(/<[a-z0-9]+>/,"", $2)
 					# all the flags are contained within < ... > on freebsd at least
@@ -4106,7 +4212,7 @@ get_cpu_flags_bsd()
 		}' <<< "$Dmesg_Boot_Data" )
 	elif [[ -n $Sysctl_a_Data ]];then
 		if [[ $BSD_VERSION == 'openbsd' ]];then
-			gawk_fs='='
+			gawk_fs=':'
 		fi
 		cpu_flags=$( gawk -F "$gawk_fs" '
 		BEGIN {
@@ -4334,7 +4440,7 @@ get_desktop_environment()
 		desktop_environment="KDE"
 	elif [[ $XDG_CURRENT_DESKTOP == 'Unity' ]];then
 		version=$( get_program_version 'unity' '^unity' '2' )
-		# not certain cinn will always have version, so keep output right if not
+		# not certain will always have version, so keep output right if not
 		if [[ -n $version ]];then
 			version="$version "
 		fi
@@ -4345,6 +4451,36 @@ get_desktop_environment()
 			fi
 		fi
 		desktop_environment="Unity"
+	elif [[ $XDG_CURRENT_DESKTOP == 'LXQt' ]];then
+# 		if type -p lxqt-about &>/dev/null;then
+# 			version=$( get_program_version 'lxqt-about' '^lxqt-about' '2' )
+# 		fi
+		if [[ $B_EXTRA_DATA == 'true' ]];then
+			if kded$KDE_SESSION_VERSION &>/dev/null;then
+				version_data=$( kded$KDE_SESSION_VERSION --version 2>/dev/null )
+				toolkit=$( grep -si '^Qt:' <<< "$version_data" | gawk '{print $2}' )
+			elif type -p qtdiag &>/dev/null;then
+				toolkit=$( get_program_version 'qtdiag' '^qt' '2' )
+			fi
+			if [[ -n $toolkit ]];then
+				version="$version (Qt $toolkit)"
+			fi
+		fi
+		desktop_environment='LXQt'
+	# note, X-Cinnamon value strikes me as highly likely to change, so just search for the last part
+	elif [[ -n $XDG_CURRENT_DESKTOP && -z ${XDG_CURRENT_DESKTOP/*innamon*/} ]];then
+		version=$( get_program_version 'cinnamon' '^cinnamon' '2' )
+		# not certain cinn will always have version, so keep output right if not
+		if [[ -n $version ]];then
+			version="$version "
+		fi
+		if [[ $B_EXTRA_DATA == 'true' ]];then
+			toolkit=$( get_de_gtk_data )
+			if [[ -n $toolkit ]];then
+				version="$version(Gtk $toolkit)"
+			fi
+		fi
+		desktop_environment="Cinnamon"
 	fi
 	# did we find it? If not, start the xprop tests
 	if [[ -z $desktop_environment ]];then
@@ -4669,18 +4805,44 @@ get_de_gtk_data()
 		# this is the most likely order as of: 2014-01-13. Not going to try to support all package managers
 		# too much work, just the very biggest ones.
 		if type -p dpkg &>/dev/null;then
-			toolkit=$( dpkg -s libgtk-3-0 2>/dev/null | gawk -F ':' '/^Version/ {print $2}' )
-			if [[ -z $toolkit ]];then
-				toolkit=$( dpkg -s libgtk2.0-0 2>/dev/null | gawk -F ':' '/^Version/ {print $2}' )
-			fi
+			toolkit=$( dpkg -s libgtk-3-0 2>/dev/null | gawk -F ':' '/^[[:space:]]*Version/ {print $2}' )
 			# just guessing on gkt 4 package name
 			if [[ -z $toolkit ]];then
-				toolkit=$( dpkg -s libgtk-4-0 2>/dev/null | gawk -F ':' '/^Version/ {print $2}' )
+				toolkit=$( dpkg -s libgtk-4-0 2>/dev/null | gawk -F ':' '/^[[:space:]]*Version/ {print $2}' )
+			fi
+			if [[ -z $toolkit ]];then
+				toolkit=$( dpkg -s libgtk2.0-0 2>/dev/null | gawk -F ':' '/^[[:space:]]*Version/ {print $2}' )
 			fi
 		elif type -p pacman &>/dev/null;then
-			toolkit=$(  pacman -Qi gtk3 2>/dev/null | gawk -F ':' '/^Version/ {print $2}' )
+			toolkit=$(  pacman -Qi gtk3 2>/dev/null | gawk -F ':' '/^[[:space:]]*Version/ {print $2}' )
+			# just guessing on gkt 4 package name
 			if [[ -z $toolkit ]];then
-				toolkit=$( pacman -Qi gtk2 2>/dev/null | gawk -F ':' '/^Version/ {print $2}' )
+				toolkit=$( pacman -Qi gtk4 2>/dev/null | gawk -F ':' '/^[[:space:]]*Version/ {print $2}' )
+			fi
+			if [[ -z $toolkit ]];then
+				toolkit=$( pacman -Qi gtk2 2>/dev/null | gawk -F ':' '/^[[:space:]]*Version/ {print $2}' )
+			fi
+		# Name        : libgtk-3-0
+		# Version     : 3.12.2
+		elif type -p rpm &>/dev/null;then
+			toolkit=$( rpm -qi libgtk-3-0 2>/dev/null | gawk -F ':' '
+			/^[[:space:]]*Version/ { 
+				gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2)
+				print $2 
+			}' )
+			if [[ -z $toolkit ]];then
+				toolkit=$( rpm -qi libgtk-4-0 2>/dev/null | gawk -F ':' '
+				/^[[:space:]]*Version/ {
+					gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2)
+					print $2
+				}' )
+			fi
+			if [[ -z $toolkit ]];then
+				toolkit=$( rpm -qi libgtk-2-0 2>/dev/null | gawk -F ':' '
+				/^[[:space:]]*Version/ {
+					gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2)
+					print $2
+				}' )
 			fi
 		fi
 	fi
@@ -4689,12 +4851,14 @@ get_de_gtk_data()
 	eval $LOGFE
 }
 
+
 # see which dm has started if any
 get_display_manager()
 {
 	eval $LOGFS
-	# ldm - LTSP display manager
-	local dm_id_list='entranced.pid gdm.pid gdm3.pid kdm.pid ldm.pid lightdm.pid lxdm.pid mdm.pid nodm.pid slim.lock tint2.pid wdm.pid xdm.pid' 
+	# ldm - LTSP display manager. Note that sddm does not appear to have a .pid extension in Arch
+	# note: to avoid positives with directories, test for -f explicitly, not -e
+	local dm_id_list='entranced.pid gdm.pid gdm3.pid kdm.pid ldm.pid lightdm.pid lxdm.pid mdm.pid nodm.pid sddm.pid sddm slim.lock tint2.pid wdm.pid xdm.pid' 
 	local dm_id='' dm='' separator=''
 	# note we don't need to filter grep if we do it this way
 	local x_is_running=$( grep '/usr.*/X' <<< "$Ps_aux_Data" | grep -iv '/Xprt' )
@@ -4702,7 +4866,8 @@ get_display_manager()
 	for dm_id in $dm_id_list
 	do
 		# note: ${dm_id%.*}/$dm_id will create a dir name out of the dm id, then test if pid is in that
-		if [[ -e /run/$dm_id || -e /run/${dm_id%.*}/$dm_id || -e /var/run/$dm_id ]];then
+		if [[ -f /run/$dm_id || -f /run/${dm_id%.*}/$dm_id || -f /var/run/$dm_id || \
+		      -f /var/run/${dm_id%.*}/$dm_id ]];then
 			# just on the off chance that two dms are running, good info to have in that case, if possible
 			dm=$dm$separator${dm_id%.*}
 			separator=','
@@ -5152,7 +5317,14 @@ get_dmesg_boot_data()
 		# replace all indented items with ~ so we can id them easily while processing
 		# note that if user, may get error of read permissions
 		# for some weird reason, real mem and avail mem are use a '=' separator, who knows why, the others are ':'
-		dmsg_boot_data="$( cat $FILE_DMESG_BOOT 2>/dev/null | sed -e 's/"//g' -e 's/[[:space:]]*=[[:space:]]*/:/g' -e 's/:[[:space:]]*/:/g' )"
+		dmsg_boot_data="$( cat $FILE_DMESG_BOOT 2>/dev/null | gawk '
+		{
+			sub(/[[:space:]]*=[[:space:]]*|:[[:space:]]*/,":", $0)
+			gsub(/,/," ", $0)
+			gsub(/\"/, "", $0)
+			gsub(/[[:space:]][[:space:]]/, " ", $0)
+			print $0
+		}' )"
 	fi
 	echo "$dmsg_boot_data"
 	# log_function_data "$dmsg_boot_data"
@@ -5702,8 +5874,8 @@ get_hdd_data_basic()
 		else
 			df_string='df -k'
 		fi
-		if swapctl -l &>/dev/null;then
-			swap_size=$( swapctl -l 2>/dev/null | gawk '
+		if swapctl -l -k &>/dev/null;then
+			swap_size=$( swapctl -l -k 2>/dev/null | gawk '
 			BEGIN { 
 			swapSize=0
 			total=0
@@ -5721,7 +5893,7 @@ get_hdd_data_basic()
 	hdd_data="$( eval $df_string )"
 	# eval $df_string | awk 'BEGIN{tot=0} !/total/ {tot+=$4} END{print tot}'
 	log_function_data 'raw' "hdd_data:\n$hdd_data"
-	hdd_used=$( echo "$hdd_data" | gawk -v bsdType=$BSD_TYPE -v swapSize=$swap_size '
+	hdd_used=$( echo "$hdd_data" | gawk -v bsdType="$BSD_TYPE" -v swapSize="$swap_size" '
 	BEGIN {
 		# this is used for specific cases where bind, or incorrect multiple mounts to same partitions,
 		# is present. The value is searched for an earlier appearance of that partition and if it is 
@@ -5742,7 +5914,7 @@ get_hdd_data_basic()
 	# note that linux 3.2.45-grsec-9th types kernels have this type of partition name: /dev/xvdc (no number, letter)
 	# note: btrfs does not seem to use partition integers, just the primary /dev/sdx identifier
 	# df can also show /dev/disk/(by-label|by-uuid etc)
-	/^\/dev\/(disk\/|mapper\/|[hsv]d[a-z][0-9]*|dm[-]?[0-9]+|ada[0-9]+p[0-9]+.*|md[0-9]+|[aw]d[0-9]+s.*|xvd[a-z])/ {
+	/^\/dev\/(disk\/|mapper\/|[hsv]d[a-z][0-9]*|dm[-]?[0-9]+|ada[0-9]+p[0-9]+.*|(ad|sd|wd)[0-9]+[a-z]|md[0-9]+|[aw]d[0-9]+s.*|xvd[a-z])|^ROOT/ {
 		# this handles the case where the first item is too long
 		# and makes df wrap output to next line, so here we advance
 		# it to the next line for that single case. Using df -P should
@@ -5822,19 +5994,29 @@ get_hdd_data_basic()
 			# this handles a special case with livecds where no hdd_used is detected
 			if ( size > 0 && hddUsed == "na" ) {
 				size = sprintf( "%.1f", size )
-				print size "GB,-"
+				print size "GB,-,,.."
 			}
 			else if ( size > 0 && workingUsed > 0 ) {
 				diskUsed = workingUsed*100/size  # calculate used percentage
 				diskUsed = sprintf( "%.1f", diskUsed )
+				if ( int(diskUsed) > 100 ) {
+					diskUsed = "Used Error!"
+				}
+				else {
+					diskUsed = diskUsed "% used"
+				}
 				size = sprintf( "%.1f", size )
-				print size "GB," diskUsed "% used"
+				print size "GB," diskUsed ",,.." 
 			}
 			else {
-				print "NA,-" # print an empty array, this will be further handled in the print out function
+				print "NA,-,,.." # print an empty array, this will be further handled in the print out function
 			}
 		}' $FILE_PARTITIONS ) )
 		log_function_data 'cat' "$FILE_PARTITIONS"
+	else
+		if [[ -n $BSD_TYPE ]];then
+			get_hard_drive_data_bsd "$hdd_used"
+		fi
 	fi
 	IFS="$ORIGINAL_IFS"
 	a_temp=${A_HDD_DATA[@]}
@@ -5849,7 +6031,7 @@ get_hard_drive_data_advanced()
 	eval $LOGFS
 	local a_temp_working='' a_temp_scsi='' temp_holder='' temp_name='' i='' j=''
 	local sd_ls_by_id='' ls_disk_by_id='' ls_disk_by_path='' usb_exists='' a_temp=''
-	local firewire_exists='' thunderbolt_exists='' thunderbolt_exists=''
+	local firewire_exists='' thunderbolt_exists='' thunderbolt_exists='' hdd_temp hdd_serial=''
 
 	## check for all ide type drives, non libata, only do it if hdx is in array
 	## this is now being updated for new /sys type paths, this may handle that ok too
@@ -5983,11 +6165,131 @@ get_hard_drive_data_advanced()
 					fi
 				done
 			fi
+			if [[ $B_EXTRA_DATA == 'true' ]];then
+				IFS=","
+				a_temp_working=( ${A_HDD_DATA[i]} )
+				# echo "a:" ${a_temp_working[@]}
+				IFS="$ORIGINAL_IFS"
+				hdd_temp=''
+				hdd_serial=''
+				if [[ -n ${a_temp_working[1]} ]];then
+					hdd_temp=$( get_hdd_temp_data "/dev/${a_temp_working[0]}" )
+				fi
+				if [[ $B_EXTRA_EXTRA_DATA == 'true' ]];then
+					hdd_serial=$( get_hdd_serial_number "${a_temp_working[0]}" )
+				fi
+				A_HDD_DATA[i]="${a_temp_working[0]},${a_temp_working[1]},${a_temp_working[2]},${a_temp_working[3]},$hdd_serial,$hdd_temp"
+				# echo b: ${A_HDD_DATA[i]}
+			fi
 		done
-		unset ls_disk_by_id # and then let's dump the data we don't need
 	fi
 	a_temp=${A_HDD_DATA[@]}
 	log_function_data "A_HDD_DATA: $a_temp"
+	eval $LOGFE
+}
+
+# args: $1 ~ hdd_used
+get_hard_drive_data_bsd()
+{
+	eval $LOGFS
+	
+	local a_temp=''
+	
+	if [[ -n $Dmesg_Boot_Data ]];then
+		IFS=$'\n'
+		A_HDD_DATA=( $( gawk -v hddUsed="$1" -F ':' '
+		BEGIN {
+			IGNORECASE=1
+			size=0
+			bSetSize="false"
+		}
+		
+		$1 ~ /^(ad|ada|sd|wd)[0-9]+(|[[:space:]]at.*)$/ {
+			diskId=gensub(/^((ad|ada|sd|wd)[0-9]+)[^0-9].*/,"\\1",1,$1)
+			# note: /var/run/dmesg.boot may repeat items since it is not created
+			# fresh every boot, this way, only the last items will be used per disk id
+			if (aIds[diskId] == "" ) {
+				aIds[diskId]=diskId
+				if ( $0 !~ /raid/) { 
+					bSetSize="true"
+				}
+			}
+			aDisks[diskId, "id"] = diskId
+			if ($0 ~ /[^0-9][0-9\.]+[[:space:]]*[MG]B/ && $0 !~ /MB\/s/) {
+				workingSize=gensub(/.*[^0-9]([0-9\.]+[[:space:]]*[MG]B).*/,"\\1",1,$0)
+				if (workingSize ~ /GB/ ) {
+					sub(/[[:space:]]*GB/,"",workingSize)
+					workingSize=workingSize*1000
+				}
+				else if (workingSize ~ /MB/ ) {
+					sub(/[[:space:]]*MB/,"",workingSize)
+					workingSize=workingSize
+				}
+				aDisks[diskId, "size"] = workingSize
+				if ( bSetSize == "true" ) {
+					if ( workingSize != "" ){
+						size=size+workingSize
+						bSetSize="false"
+					}
+				}
+			}
+			if ( $NF ~ /<.*>/ ){
+				gsub(/.*<|>.*/,"",$NF)
+				aDisks[diskId, "model"] = $NF
+			}
+			if ( $NF ~ /serial number/ ){
+				sub(/serial[[:space:]]+number[[:space:]]*/,"",$NF)
+				aDisks[diskId, "serial"] = $NF
+			}
+		}
+		END {
+			# sde,3.9GB,STORE_N_GO,USB,C200431546D3CF49-0:0,0
+			# sdd,250.1GB,ST3250824AS,,9ND08GKX,45
+			# multi dimensional pseudo arrays are sorted at total random, not in order of
+			# creation, so force a sort of the aIds, which deletes the array index but preserves
+			# the sorted keys.
+			asort(aIds) 
+			
+			for ( key in aIds ) {
+				# we are not adding to size above for raid, and we do not print it for raid
+				# this is re openbsd raid, which uses sd0 for raid array, even though sd is for scsi
+				if ( aDisks[aIds[key], "model"] !~ /raid/ ) {
+					workingSize = aDisks[aIds[key], "size"]/1000
+					workingSize = sprintf( "%.1fGB", workingSize )
+					print aDisks[aIds[key], "id"] "," workingSize "," aDisks[aIds[key], "model"] "," "," aDisks[aIds[key], "serial"] "," 
+				}
+			}
+			size = size/1000                # calculate size in GB size
+			# in kb
+			workingUsed = hddUsed*1024/1000**3         # calculate workingUsed in GB used
+			# this handles a special case with livecds where no hdd_used is detected
+			if ( size > 0 && hddUsed == "na" ) {
+				size = sprintf( "%.1f", size )
+				print size "GB,-,,.."
+			}
+			else if ( size > 0 && workingUsed > 0 ) {
+				diskUsed = workingUsed*100/size  # calculate used percentage
+				diskUsed = sprintf( "%.1f", diskUsed )
+				if ( int(diskUsed) > 100 ) {
+					diskUsed = "Used Error!"
+				}
+				else {
+					diskUsed = diskUsed "% used"
+				}
+				size = sprintf( "%.1f", size )
+				print size "GB," diskUsed ",,.." 
+			}
+			else {
+				print "NA,-,,.." # print an empty array, this will be further handled in the print out function
+			}
+		}' <<< "$Dmesg_Boot_Data" ) )
+		IFS="$ORIGINAL_IFS"
+	fi
+	
+	a_temp=${A_HDD_DATA[@]}
+	# echo ${a_temp[@]}
+	log_function_data "A_HDD_DATA: $a_temp"
+	
 	eval $LOGFE
 }
 
@@ -6441,7 +6743,11 @@ get_memory_data()
 			# procs      memory      page                    disks     faults         cpu
 			# r b w     avm    fre   flt  re  pi  po    fr  sr ad0 ad1   in   sy   cs us sy id
 			# 0 0 0  21880M  6444M   924  32  11   0   822 827   0   0  853  832  463  8  3 88
-
+			# dragonfly
+			#  procs      memory      page                    disks     faults      cpu
+			#  r b w     avm    fre  flt  re  pi  po  fr  sr ad0 ad1   in   sy  cs us sy id
+			#  0 0 0       0  84060 30273993 2845 12742 1164 407498171 320960902   0   0 424453025 1645645889 1254348072 35 38 26
+			
 			BEGIN {
 				IGNORECASE=1
 				memory=""
@@ -6457,12 +6763,19 @@ get_memory_data()
 				}
 				else {
 					sub(/K/,"",$4)
-					memory=$4
+					# dragonfly can have 0 avm, but they may fix that so make test dynamic
+					if ( $4 != 0 ) {
+						memory=$4
+					}
+					else {
+						memory="avm-0-" $5
+					}
 				}
 				print memory " " 
 				exit
 			}' )
 		fi
+		# for dragonfly, we will use free mem, not used because free is 0
 		memory=$( grep -i 'mem' <<< "$Sysctl_a_Data" | gawk -v usedMemory="$used_memory" -F "$gawk_fs"  '
 		BEGIN {
 			realMemory=""
@@ -6488,9 +6801,18 @@ get_memory_data()
 		END {
 			# hack: temp fix for openbsd/darwin: in case no free mem was detected but we have physmem
 			if ( freeMemory == "" && realMemory != "" ) {
-				# use openbsd avail mem data if available
+				# use openbsd/dragonfly avail mem data if available
 				if (usedMemory != "" ) {
-					printf("%.1f/%.1fMB\n", usedMemory/1024, realMemory/1024)
+					if (usedMemory !~ /^avm-0-/ ) {
+						printf("%.1f/%.1fMB\n", usedMemory/1024, realMemory/1024)
+					}
+					else {
+						sub(/avm-0-/,"",usedMemory)
+						int(usedMemory)
+						# using free mem, not used for dragonfly
+						usedMemory = realMemory - usedMemory
+						printf("%.1f/%.1fMB\n", usedMemory/1024, realMemory/1024)
+					}
 				}
 				else {
 					printf("NA/%.1fMB\n", realMemory/1024)
@@ -6611,7 +6933,9 @@ get_networking_data()
 	IFS="$ORIGINAL_IFS"
 	get_networking_usb_data
 	if [[ $B_SHOW_ADVANCED_NETWORK == 'true' || $B_USB_NETWORKING == 'true' ]];then
-		get_network_advanced_data
+		if [[ -z $BSD_TYPE ]];then
+			get_network_advanced_data
+		fi
 	fi
 	a_temp=${A_NETWORK_DATA[@]}
 	log_function_data "A_NETWORK_DATA: $a_temp"
@@ -7043,11 +7367,7 @@ get_optical_drive_data()
 	local a_temp='' sys_uevent_path='' proc_cdrom='' link_list=''
 	local separator='' linked='' working_disk='' disk='' item_string='' proc_info_string='' 
 	local dev_disks_full=''
-	if [[ $BSD_TYPE != 'bsd' ]];then
-		dev_disks_full="$( ls /dev/dvd* /dev/cd* /dev/scd* /dev/sr* 2>/dev/null | grep -vE 'random' )"
-	else
-		dev_disks_full="$( ls /dev/dvd* /dev/cd* /dev/scd* 2>/dev/null )"
-	fi
+	dev_disks_full="$( ls /dev/dvd* /dev/cd* /dev/scd* /dev/sr* 2>/dev/null | grep -vE 'random' )"
 	## Not using this now because newer kernel is NOT linking all optical drives. Some, but not all
 	# Some systems don't support xargs -L plus the unlinked optical drive unit make this not a good option
 	# get the actual disk dev location, first try default which is easier to run, need to preserve line breaks
@@ -7222,6 +7542,71 @@ get_optical_drive_data()
 }
 # get_optical_drive_data;exit
 
+get_optical_drive_data_bsd()
+{
+	eval $LOGFS
+	
+	local a_temp=''
+	
+	if [[ -n $Dmesg_Boot_Data ]];then
+		IFS=$'\n'
+		A_OPTICAL_DRIVE_DATA=( $( gawk -F ':' '
+		BEGIN {
+			IGNORECASE=1
+		}
+		# sde,3.9GB,STORE_N_GO,USB,C200431546D3CF49-0:0,0
+		# sdd,250.1GB,ST3250824AS,,9ND08GKX,45
+		$1 ~ /^(cd|dvd)[0-9]+/ {
+			diskId=gensub(/^((cd|dvd)[0-9]+)[^0-9].*/,"\\1",1,$1)
+			# note: /var/run/dmesg.boot may repeat items since it is not created
+			# fresh every boot, this way, only the last items will be used per disk id
+			if (aIds[diskId] == "" ) {
+				aIds[diskId]=diskId
+			}
+			aDisks[diskId, "id"] = diskId
+			if ( $NF ~ /<.*>/ ){
+				gsub(/.*<|>.*/,"",$NF)
+				rev_number=gensub(/.*[^0-9\.]([0-9\.]+)$/,"\\1",1,$NF)
+				if (rev_number ~ /^[0-9\.]+$/) {
+					aDisks[diskId, "rev"] = rev_number
+				}
+				model=gensub(/(.*[^0-9\.])[0-9\.]+$/,"\\1",1,$NF)
+				sub(/[[:space:]]+$/,"",model)
+				aDisks[diskId, "model"] = model
+			}
+			if ( $NF ~ /serial number/ ){
+				sub(/serial[[:space:]]+number[[:space:]]*/,"",$NF)
+				aDisks[diskId, "serial"] = $NF
+			}
+			if ( $NF ~ /[GM]B\/s/ ){
+				speed=gensub(/^([0-9\.]+[[:space:]]*[GM]B\/s).*/,"\\1",1,$NF)
+				sub(/\.[0-9]+/,"",speed)
+				if ( speed ~ /^[0-9]+/ ) {
+					aDisks[diskId, "speed"] = speed
+				}
+			}
+		}
+		# "$link,dev-readlinks,$vendor,$model,$rev_number,$proc_info_string,$state"
+		# $proc_info_string: print speed "," multisession "," mcn "," audio "," cdr "," cdrw "," dvd "," dvdr "," dvdram
+		END {
+			# multi dimensional pseudo arrays are sorted at total random, not in order of
+			# creation, so force a sort of the aIds, which deletes the array index but preserves
+			# the sorted keys.
+			asort(aIds) 
+			for ( key in aIds ) {
+				print aDisks[aIds[key], "id"] ",,," aDisks[aIds[key], "model"] "," aDisks[aIds[key], "rev"] "," aDisks[aIds[key], "speed"] ",,,,,,,," 
+			}
+		}' <<< "$Dmesg_Boot_Data" ) )
+		IFS="$ORIGINAL_IFS"
+	fi
+	
+	a_temp=${A_OPTICAL_DRIVE_DATA[@]}
+	# echo ${a_temp[@]}
+	log_function_data "A_OPTICAL_DRIVE_DATA: $a_temp"
+	
+	eval $LOGFE
+}
+
 get_partition_data()
 {
 	eval $LOGFS
@@ -7238,7 +7623,7 @@ get_partition_data()
 		--exclude-type=fdescfs --exclude-type=iso9660 --exclude-type=linprocfs --exclude-type=procfs
 		--exclude-type=squashfs --exclude-type=sysfs --exclude-type=tmpfs --exclude-type=unionfs'
 	else
-		swap_data="$( swapctl -l 2>/dev/null )"
+		swap_data="$( swapctl -l -k 2>/dev/null )"
 		# default size is 512, -H only for size in human readable format
 		# older bsds don't support -T, pain, so we'll use partial output there
 		if df -h -T &>/dev/null;then
@@ -7267,7 +7652,7 @@ get_partition_data()
 	# $NF = partition name; $(NF - 4) = partition size; $(NF - 3) = used, in gB; $(NF - 1) = percent used
 	## note: by subtracting from the last field number NF, we avoid a subtle issue with LVM df output, where if
 	## the first field is too long, it will occupy its own line, this way we are getting only the needed data
-	A_PARTITION_DATA=( $( echo "$main_partition_data" | gawk -v bsdType=$BSD_TYPE -v bsdVersion=$BSD_VERSION '
+	A_PARTITION_DATA=( $( echo "$main_partition_data" | gawk -v bsdType="$BSD_TYPE" -v bsdVersion="$BSD_VERSION" '
 	BEGIN {
 		IGNORECASE=1
 		fileSystem=""
@@ -7279,7 +7664,7 @@ get_partition_data()
 	( bsdType != "" ) {
 		# skip if non disk/partition, or if raid primary id, which will not have a / in it
 		if ( $1 ~ /^(aufs|devfs|devtmpfs|fdescfs|iso9660|linprocfs|procfs|squashfs|sysfs|tmpfs|type|unionfs)$/ || 
-		$1 ~ /^([^\/]+)$/ ) {
+		( $1 ~ /^([^\/]+)$/ && $1 !~ /^ROOT/ ) ) {
 			# note use next, not getline or it does not work right
 			next 
 		}
@@ -7414,7 +7799,7 @@ get_partition_data()
 		# older bsds have df minus -T so can't get fs type easily, try using mount instead
 		if [[ $BSD_TYPE == 'bsd' ]] && [[ -z $fs_type && -n $dev_item ]];then
 			dev_bsd_item=$( sed -e 's/non-dev-//' -e 's|/|\\/|g' <<< "$dev_item" )
-			fs_type=$( gawk -v bsdVersion=$BSD_VERSION -F '(' '
+			fs_type=$( gawk -v bsdVersion="$BSD_VERSION" -F '(' '
 			BEGIN {
 				IGNORECASE=1
 				fileSystem=""
@@ -7821,13 +8206,13 @@ EOF"
 				sub(/:$/, "", pciId)
 				itemData=$4
 				chipId=gensub(/.*chip=([0-9a-f][0-9a-f][0-9a-f][0-9a-f])([0-9a-f][0-9a-f][0-9a-f][0-9a-f]).*/, "\\2:\\1", itemData )
-				if ( $2 ~ /class=020000|class=0x068000/ ) {
+				if ( $2 ~ /class=020000/ ) {
 					class="network"
 				}
 				else if ( $2 == "class=030000" ) {
 					class="display"
 				}
-				else if ( $2 == "class=040300" ) {
+				else if ( $2 ~ /class=040300|class=040100/ ) {
 					class="audio"
 				}
 				
@@ -8208,6 +8593,7 @@ get_raid_data_bsd()
 		A_RAID_DATA=( $(
 		gawk '
 		BEGIN {
+			IGNORECASE=1
 			raidString=""
 			separator=""
 			components=""
@@ -8218,6 +8604,7 @@ get_raid_data_bsd()
 		/SIZE.*ALLOC/ {
 			sub(/.*ALLOC.*/,"", $0)
 		}
+		# gptid/d874c7e7-3f6d-11e4-b7dc-080027ea466c
 		/^[^[:space:]]/ {
 			components=""
 			separator=""
@@ -8228,18 +8615,30 @@ get_raid_data_bsd()
 			blocksAvailable=$4
 			chunkRaidAllocated=$3
 			
-			# go to the next line now, this will probably need fixing later with weird data sets
 			getline
+			# raid level is the second item in the output, unless it is not, sometimes it is absent
 			if ( $1 != "" ) {
-				raidLevel="zfs " $1
+				if ( $1 ~ /raid|mirror/ ) {
+					raidLevel="zfs " $1
+				}
+				else {
+					raidLevel="zfs-no-raid"
+					components = $1
+					separator=" "
+				}
 			}
 			
 			while ( getline && $1 !~ /^$/ ) {
+				# https://blogs.oracle.com/eschrock/entry/zfs_hot_spares
+				if ($1 ~ /spares/) {
+					getline
+				}
 				# print $1
 				components = components separator $1
 				separator=" "
 			}
-
+			# some issues if we use ~ here
+			gsub(/\//,"%",components)
 			# print $1
 			raidString = device "," deviceState "," raidLevel "," components "," reportSize "," uData 
 			raidString = raidString "," blocksAvailable "," superBlock "," algorithm "," chunkRaidAllocated 
@@ -8286,6 +8685,9 @@ get_raid_component_data_bsd()
 					IGNORECASE=1
 					separator=""
 				}
+				{
+					gsub(/\//,"%",$1)
+				}
 				$1 ~ /^'$component'$/ {
 					sub( /ONLINE/, "", $2 )
 					print "'$component'" $2
@@ -8294,7 +8696,7 @@ get_raid_component_data_bsd()
 				component_string="$component_string$separator$component_status"
 				separator=' '
 			done
-			array_string="$device,${a_raid_data[1]},${a_raid_data[2]},$component_string,${a_raid_data[4]}"
+			array_string="$device,${a_raid_data[1]},${a_raid_data[2]},${component_string//%/\/},${a_raid_data[4]}"
 			array_string="$array_string,${a_raid_data[5]},${a_raid_data[6]},${a_raid_data[7]},${a_raid_data[8]}"
 			array_string="$array_string,${a_raid_data[9]},${a_raid_data[10]},${a_raid_data[11]},${a_raid_data[12]},"
 			array_string="$array_string${a_raid_data[13]},${a_raid_data[14]},${a_raid_data[15]}"
@@ -8308,9 +8710,20 @@ get_raid_component_data_bsd()
 			}
 			$1 ~ /^'$device'$/ {
 				while ( getline && !/^$/ ) {
-					# raid level is the second item in the output
-					if ( $1 != "" && raidLevel == "" ) {
-						raidLevel="zfs " $1
+					# raid level is the second item in the output, unless it is not, sometimes it is absent
+					if ( $1 != "" ) {
+						if ( raidLevel == "" ) {
+							if (  $1 ~ /raid|mirror/ ) {
+								raidLevel="zfs " $1
+								getline
+							}
+							else {
+								raidLevel="zfs-no-raid"
+							}
+						}
+					}
+					# https://blogs.oracle.com/eschrock/entry/zfs_hot_spares
+					if ($1 ~ /spares/) {
 						getline
 					}
 					sub( /ONLINE/, "", $2 )
@@ -8867,6 +9280,7 @@ get_ram_data()
 # neat and readable. Each line of the total number contains the following sections,
 # separated by a : for splitting in the print function
 # part one, repo type/string : part two, file name, if present, of info : part 3, repo data
+# args: $1 - [file location of debug data file - optional, only for debugging data collection] 
 get_repo_data()
 {
 	eval $LOGFS
@@ -8874,11 +9288,27 @@ get_repo_data()
 	local repo_name=''
 	local apt_file='/etc/apt/sources.list' yum_repo_dir='/etc/yum.repos.d/' yum_conf='/etc/yum.conf'
 	local pacman_conf='/etc/pacman.conf' pacman_repo_dir='/etc/pacman.d/' pisi_dir='/etc/pisi/'
-	local zypp_repo_dir='/etc/zypp/repos.d/' freebsd_conf='/etc/portsnap.conf' openbsd_conf='/etc/pkg.conf'
+	local zypp_repo_dir='/etc/zypp/repos.d/' ports_conf='/etc/portsnap.conf' openbsd_conf='/etc/pkg.conf'
+	local bsd_pkg_dir='/usr/local/etc/pkg/repos/' slackpkg_file='/etc/slackpkg/mirrors'
+	local netbsd_file='/usr/pkg/etc/pkgin/repositories.conf' freebsd_file='/etc/freebsd-update.conf'
+	local freebsd_pkg_file='/etc/pkg/FreeBSD.conf' slackpkg_plus_file='/etc/slackpkg/slackpkgplus.conf'
 	
 	# apt - debian, buntus, also sometimes some yum/rpm repos may create apt repos here as well
 	if [[ -f $apt_file || -d $apt_file.d ]];then
-		REPO_DATA="$( grep -Esv '(^[[:space:]]*$|^[[:space:]]*#)' $apt_file $apt_file.d/*.list | sed $SED_RX 's/^(.*)/apt sources:\1/' )"
+		repo_files=$(ls /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null)
+		log_function_data "apt repo files: $repo_files"
+		for repo_file in $repo_files
+		do
+			if [[ -n $1 ]];then
+				cat $repo_file &> $1/repo-data_${repo_file//\//-}.txt
+			fi
+			repo_data_working="$( gawk -v repoFile="$repo_file" '
+			!/^[[:space:]]*$|^[[:space:]]*#/ {
+				print "apt sources^" repoFile "^" $0
+			}' $repo_file )"
+			get_repo_builder "$repo_data_working"
+		done
+		repo_data_working=''
 	fi
 	# yum - fedora, redhat, centos, etc. Note that rpmforge also may create apt sources
 	# in /etc/apt/sources.list.d/. Therefore rather than trying to assume what package manager is
@@ -8890,17 +9320,22 @@ get_repo_data()
 			# older redhats put their yum data in /etc/yum.conf
 			repo_files=$( ls $yum_repo_dir*.repo $yum_conf 2>/dev/null )
 			repo_name='yum'
+			log_function_data "yum repo files: $repo_files"
 		elif [[ -d $zypp_repo_dir ]];then
 			repo_files=$( ls $zypp_repo_dir*.repo 2>/dev/null )
 			repo_name='zypp'
+			log_function_data "zypp repo files: $repo_files"
 		fi
 		if [[ -n $repo_files ]];then
 			for repo_file in $repo_files
 			do
-				repo_data_working="$( gawk -v repoFile=$repo_file '
+				if [[ -n $1 ]];then
+					cat $repo_file &> $1/repo-data_${repo_file//\//-}.txt
+				fi
+				repo_data_working="$( gawk -v repoFile="$repo_file" '
 				# construct the string for the print function to work with, file name: data
 				function print_line( fileName, repoId, repoUrl ){
-					print "'$repo_name' sources:" fileName ":" repoId repoUrl
+					print "'$repo_name' sources^" fileName "^" repoId  repoUrl
 				}
 				BEGIN {
 					FS="\n"
@@ -8951,19 +9386,11 @@ get_repo_data()
 					}
 				}
 				' $repo_file )"
-				
 				# then load the global for each file as it gets filled
-				if [[ -n $repo_data_working ]];then
-					if [[ -z $REPO_DATA ]];then
-						REPO_DATA="$repo_data_working"
-					else
-						REPO_DATA="$REPO_DATA
-$repo_data_working"
-					fi
-					repo_data_working=''
-				fi
+				get_repo_builder "$repo_data_working"
 			done
 		fi
+		repo_data_working=''
 	# pacman - archlinux, going to assume that pisi and arch/pacman, etc don't have the above issue with apt/yum
 	elif [[ -f $pacman_conf ]];then
 		# get list of mirror include files, trim white space off ends
@@ -8982,6 +9409,9 @@ $repo_data_working"
 		repo_data_working="$repo_data_working $pacman_conf"
 		for repo_file in $repo_data_working 
 		do
+			if [[ -n $1 ]];then
+				cat $repo_file &> $1/repo-data_${repo_file//\//-}.txt
+			fi
 			if [[ -f $repo_file ]];then
 				# inserting a new line after each found / processed match
 				repo_data_working2="$repo_data_working2$( gawk -v repoFile=$repo_file '
@@ -8991,7 +9421,7 @@ $repo_data_working"
 				}
 				/^[[:space:]]*Server/ {
 					sub(/^[[:space:]]+|[[:space:]]+$/,"",$2)
-					print "pacman repo servers:" repoFile ":" $2 "\\n"
+					print "pacman repo servers^" repoFile "^" $2 "\\n"
 				}
 				' $repo_file )"
 			else
@@ -9000,9 +9430,57 @@ $repo_data_working"
 		done
 		# execute line breaks
 		REPO_DATA="$( echo -e $repo_data_working2 )"
+		repo_data_working=''
 	# pisi - pardus
+	elif [[ -f $slackpkg_file || -f $slackpkg_plus_file ]];then
+		# note, only one file, but loop it in case more are added in future
+		if [[ -f $slackpkg_file ]];then
+			if [[ -n $1 ]];then
+				cat $slackpkg_file &> $1/repo-data_${slackpkg_file//\//-}.txt
+			fi
+			repo_data_working="$( gawk -v repoFile="$slackpkg_file" '
+			!/^[[:space:]]*$|^[[:space:]]*#/ {
+				print "slackpkg sources^" repoFile "^" $0
+			}' $slackpkg_file )"
+			get_repo_builder "$repo_data_working"
+		fi
+		if [[ -f $slackpkg_plus_file ]];then
+			if [[ -n $1 ]];then
+				cat $slackpkg_plus_file &> $1/repo-data_${slackpkg_plus_file//\//-}.txt
+			fi
+			# see sample for syntax
+			repo_data_working="$( gawk -F '=' -v repoFile="$slackpkg_plus_file" '
+			BEGIN {
+				activeRepos=""
+			}
+			# stop if set to off
+			/^SLACKPKGPLUS/ {
+				if ( $2 == "off" ){
+					exit
+				}
+			}
+			# get list of current active repos
+			/^REPOPLUS/ {
+				activeRepos=$2
+			}
+			# print out repo line if found
+			/^MIRRORPLUS/ {
+				if ( activeRepos != "" ) {
+					gsub(/MIRRORPLUS\['\''|'\''\]/,"",$1)
+					if ( match( activeRepos, $1 ) ){
+						print "slackpkg+ sources^" repoFile "^" $1 " ~ " $2
+					}
+				}
+			}' $slackpkg_plus_file )"
+			get_repo_builder "$repo_data_working"
+		fi
+		repo_data_working=''
 	elif [[ -d $pisi_dir && -n $( type -p pisi ) ]];then
 		REPO_DATA="$( pisi list-repo )"
+		if [[ -n $1 ]];then
+			echo "$REPO_DATA" &> $1/repo-data_pisi-list-repo.txt
+		fi
+		log_function_data "pisi-list-repo: $REPO_DATA"
 		# now we need to create the structure: repo info: repo path
 		# we do that by looping through the lines of the output and then
 		# putting it back into the <data>:<url> format print repos expects to see
@@ -9023,16 +9501,20 @@ $repo_data_working"
 				print $0
 			}' <<< $repo_line )
 			if [[ -n $( grep '://' <<< $repo_line ) ]];then
-				repo_data_working="$repo_data_working:$repo_line\n"
+				repo_data_working="$repo_data_working^$repo_line\n"
 			else
-				repo_data_working="${repo_data_working}pisi repo:$repo_line"
+				repo_data_working="${repo_data_working}pisi repo^$repo_line"
 			fi
 		done <<< "$REPO_DATA"
 		# echo and execute the line breaks inserted
 		REPO_DATA="$( echo -e $repo_data_working )"
+		repo_data_working=''
 	# Mandriva/Mageia using: urpmq
 	elif type -p urpmq &>/dev/null;then
 		REPO_DATA="$( urpmq --list-media active --list-url )"
+		if [[ -n $1 ]];then
+			echo "$REPO_DATA" &> $1/repo-data_urpmq-list-media-active.txt
+		fi
 		# now we need to create the structure: repo info: repo path
 		# we do that by looping through the lines of the output and then
 		# putting it back into the <data>:<url> format print repos expects to see
@@ -9060,31 +9542,141 @@ $repo_data_working"
 				repo_data_working2=$( grep -Eo '([^[:space:]]+://|[[:space:]]/).*' <<< $repo_line )
 				# then get the repo name string by slicing out the url string
 				repo_name=$( sed "s|[[:space:]]*$repo_data_working2||" <<< $repo_line )
-				repo_data_working="${repo_data_working}urpmq repo:$repo_name:$repo_data_working2\n"
+				repo_data_working="${repo_data_working}urpmq repo^$repo_name^$repo_data_working2\n"
 			fi
 		done <<< "$REPO_DATA"
 		# echo and execute the line breaks inserted
 		REPO_DATA="$( echo -e $repo_data_working )"
-	elif [[ -f $freebsd_conf ]];then
-		REPO_DATA="$( gawk -F '=' -v repoFile=$freebsd_conf '
-		BEGIN {
-			IGNORECASE=1
-		}
-		/^SERVERNAME/ {
-			print "BSD ports servers:" repoFile ":" $2
-		}
-		' $freebsd_conf )"
+	elif [[ -f $ports_conf || -f $freebsd_file || -d $bsd_pkg_dir ]];then
+		if [[ -f $ports_conf ]];then
+			if [[ -n $1 ]];then
+				cat $ports_conf &> $1/repo-data_${ports_conf//\//-}.txt
+			fi
+			repo_data_working="$( gawk -F '=' -v repoFile=$ports_conf '
+			BEGIN {
+				IGNORECASE=1
+			}
+			/^SERVERNAME/ {
+				print "BSD ports server^" repoFile "^" $2
+				exit
+			}
+			' $ports_conf )"
+			get_repo_builder "$repo_data_working"
+		fi
+		if [[ -f $freebsd_file ]];then
+			if [[ -n $1 ]];then
+				cat $freebsd_file &> $1/repo-data_${freebsd_file//\//-}.txt
+			fi
+			repo_data_working="$( gawk -v repoFile=$freebsd_file '
+			BEGIN {
+				IGNORECASE=1
+			}
+			/^ServerName/ {
+				print "FreeBSD update server^" repoFile "^" $2
+				exit
+			}
+			' $freebsd_file )"
+			get_repo_builder "$repo_data_working"
+		fi
+		if [[ -f $freebsd_pkg_file ]];then
+			if [[ -n $1 ]];then
+				cat $freebsd_pkg_file &> $1/repo-data_${freebsd_pkg_file//\//-}.txt
+			fi
+			repo_data_working="$( gawk -F ': ' -v repoFile=$freebsd_pkg_file '
+			BEGIN {
+				IGNORECASE=1
+			}
+			$1 ~ /^[[:space:]]*url/ {
+				gsub(/\"|pkg\+|,/,"",$2)
+				print "FreeBSD default pkg server^" repoFile "^" $2
+				exit
+			}
+			' $freebsd_pkg_file )"
+			get_repo_builder "$repo_data_working"
+		fi
+		
+		if [[ -d $bsd_pkg_dir ]];then
+			repo_files=$(ls ${bsd_pkg_dir}*.conf 2>/dev/null )
+			for repo_file in $repo_files
+			do
+				if [[ -n $1 ]];then
+					cat $repo_file &> $1/repo-data_${repo_file//\//-}.txt
+				fi
+				repo_data_working="$( gawk -v repoFile=$repo_file '
+				BEGIN {
+					FS=":"
+					IGNORECASE=1
+					repoName=""
+					repoUrl=""
+					enabled=""
+				}
+				{
+					gsub(/{|}|^#.*/,"",$0)
+				}
+				/^[^[:space:]]/ {
+					repoName=$1
+					repoUrl=""
+					enabled=""
+					while ( getline && $0 !~ /^[[:space:]]*$/ ) {
+						gsub(/,/,"",$0)
+						gsub(/({|}|^[[:space:]]+|[[:space:]]+$)/,"",$1)
+						gsub(/({|}|^[[:space:]]+|[[:space:]]+$)/,"",$2)
+						if ( $1 == "url" ) {
+							repoUrl=$2$3
+						}
+						if ( $1 == "enabled" ) {
+							if ( $2 == "yes" ) {
+								print "BSD pkg server^" repoFile "^" repoName " ~ " repoUrl 
+							}
+						}
+					}
+				}
+				' $repo_file )"
+				get_repo_builder "$repo_data_working"
+			done
+		fi
+		repo_data_working=''
 	elif [[ -f $openbsd_conf ]];then
+		if [[ -n $1 ]];then
+			cat $openbsd_conf &> $1/repo-data_${openbsd_conf//\//-}.txt
+		fi
 		REPO_DATA="$( gawk -F '=' -v repoFile=$openbsd_conf '
 		BEGIN {
 			IGNORECASE=1
 		}
 		/^installpath/ {
-			print "BSD ports servers:" repoFile ":" $2
+			print "OpenBSD pkg mirror^" repoFile "^" $2
 		}
 		' $openbsd_conf )"
+	elif [[ -f $netbsd_file ]];then
+		# note, only one file, but loop it in case more are added in future
+		for repo_file in $netbsd_file
+		do
+			if [[ -n $1 ]];then
+				cat $repo_file &> $1/repo-data_${repo_file//\//-}.txt
+			fi
+			repo_data_working="$( gawk -v repoFile="$repo_file" '
+			!/^[[:space:]]*$|^[[:space:]]*#/ {
+				print "NetBSD pkg servers^" repoFile "^" $0
+			}' $repo_file )"
+			get_repo_builder "$repo_data_working"
+		done
+		repo_data_working=''
 	fi
 	eval $LOGFE
+}
+# build the total REPO_DATA global here
+# args: $1 - the repo line/s
+get_repo_builder()
+{
+	if [[ -n $1 ]];then
+		if [[ -z $REPO_DATA ]];then
+			REPO_DATA="$1"
+		else
+			REPO_DATA="$REPO_DATA
+$1"
+		fi
+	fi
 }
 
 get_runlevel_data()
@@ -9791,11 +10383,14 @@ get_unmounted_partition_filesystem()
 get_uptime()
 {
 	eval $LOGFS
+	local uptime_value=''
 	## note: removing gsub(/ /,"",a); to get get space back in there, goes right before print a
-	local uptime_value="$( uptime | gawk '{
-		a = gensub(/^.*up *([^,]*).*$/,"\\1","g",$0)
-		print a
-	}' )"
+	if type -p uptime &>/dev/null;then
+		uptime_value="$( uptime | gawk '{
+			a = gensub(/^.*up *([^,]*).*$/,"\\1","g",$0)
+			print a
+		}' )"
+	fi
 	echo "$uptime_value"
 	log_function_data "uptime_value: $uptime_value"
 	eval $LOGFE
@@ -10323,15 +10918,19 @@ print_short_data()
 	local short_data='' i='' b_background_black='false'
 	local memory=$( get_memory_data )
 	local up_time="$( get_uptime )"
+	if [[ -z $up_time ]];then
+		up_time='N/A - missing uptime?'
+	fi
 
 	# set A_CPU_CORE_DATA
 	get_cpu_core_count
-	local cpc_plural='' cpu_count_print='' model_plural=''
+	local cpc_plural='' cpu_count_print='' model_plural='' current_max_clock=''
 	local cpu_physical_count=${A_CPU_CORE_DATA[0]}
 	local cpu_core_count=${A_CPU_CORE_DATA[3]}
 	local cpu_core_alpha=${A_CPU_CORE_DATA[1]}
 	local cpu_type=${A_CPU_CORE_DATA[2]}
-	local kernel_os='' local cpu_data_string=''
+	local kernel_os='' speed_starter='speed'
+	local cpu_data_string=''
 	
 	if [[ -z $BSD_TYPE || -n $cpu_type ]];then
 		cpu_type=" ($cpu_type)"
@@ -10373,6 +10972,9 @@ print_short_data()
 
 	IFS=","
 	local a_cpu_working=(${A_CPU_DATA[0]})
+	# this gets that weird min/max final array item, which almost never contains any data of use
+	local current_max_clock_nu=$(( ${#A_CPU_DATA[@]} - 1 ))
+	local a_cpu_speeds=(${A_CPU_DATA[$current_max_clock_nu]})
 	IFS="$ORIGINAL_IFS"
 	local cpu_model="${a_cpu_working[0]}"
 	## assemble data for output
@@ -10381,15 +10983,24 @@ print_short_data()
 	# if [[ -z ${a_cpu_working[1]} || ${a_cpu_working[1]} < 50 ]];then
 	#	a_cpu_working[1]=$(get_cpu_speed_hack)
 	# fi
-	# this gets that weird min/max final array item, which almost never contains any data of use
-	local min_max_clock_nu=$(( ${#A_CPU_DATA[@]} - 1 ))
-	local min_max_clock=${A_CPU_DATA[$min_max_clock_nu]/.* Mhz/ Mhz}
+	
 	# this handles the case of for example ARM cpus, which will not have data for
 	# min/max, since they don't have speed. Since that sets a flag, not found, just
 	# look for that and use the speed from the first array array, same where we got 
 	# model from
-	if [[ "$min_max_clock" == 'N/A' && ${a_cpu_working[1]} != '' ]];then
-		min_max_clock="${a_cpu_working[1]} MHz"
+	# index: 0 speed ; 1 min ; 2 max
+	# this handles bsd types which always should show N/A unless we get a way to get min / max data
+	if [[ "${a_cpu_speeds[0]}" == 'N/A' && ${a_cpu_working[1]} != '' ]];then
+		current_max_clock="${a_cpu_working[1]} MHz"
+	else
+		if [[ ${a_cpu_speeds[2]} != 0 ]];then
+			if [[ ${a_cpu_speeds[0]} == ${a_cpu_speeds[2]} ]];then
+				current_max_clock="${a_cpu_speeds[0]} MHz (max)"
+			else
+				current_max_clock="${a_cpu_speeds[0]}/${a_cpu_speeds[2]} MHz"
+				speed_starter='speed/max'
+			fi
+		fi
 	fi
 	local patch_version_number=$( get_patch_version_string )
 
@@ -10416,7 +11027,7 @@ print_short_data()
 			#C1="${C1},1"; C2="${C2},1"; CN="${CN},1"
 		fi
 	fi
-	short_data="${C1}CPU$cpc_plural${C2}$SEP1$cpu_data_string $cpu_model$model_plural$cpu_type clocked at $min_max_clock$SEP2$kernel_os$SEP2${C1}Up${C2}$SEP1$up_time$SEP2${C1}Mem${C2}$SEP1$memory$SEP2${C1}HDD${C2}$SEP1$hdd_capacity($hdd_used)$SEP2${C1}Procs${C2}$SEP1$processes$SEP2"
+	short_data="${C1}CPU$cpc_plural${C2}$SEP1$cpu_data_string $cpu_model$model_plural$cpu_type ${C1}$speed_starter${C2}$SEP1$current_max_clock$SEP2$kernel_os$SEP2${C1}Up${C2}$SEP1$up_time$SEP2${C1}Mem${C2}$SEP1$memory$SEP2${C1}HDD${C2}$SEP1$hdd_capacity($hdd_used)$SEP2${C1}Procs${C2}$SEP1$processes$SEP2"
 
 	if [[ $SHOW_IRC -gt 0 ]];then
 		short_data="$short_data${C1}Client${C2}$SEP1$IRC_CLIENT$IRC_CLIENT_VERSION$SEP2"
@@ -10441,10 +11052,14 @@ print_audio_data()
 	local driver=''
 	# set A_AUDIO_DATA and get alsa data
 	if [[ $BSD_TYPE == 'bsd' ]];then
-		if [[ $B_PCICONF_SET == 'false' ]];then
-			get_pciconf_data
+		if [[ $B_PCICONF == 'true' ]];then
+			if [[ $B_PCICONF_SET == 'false' ]];then
+				get_pciconf_data
+			fi
+			get_pciconf_card_data 'audio'
+		elif [[ $B_LSPCI == 'true' ]];then
+			get_audio_data
 		fi
-		get_pciconf_card_data 'audio'
 	else
 		get_audio_data
 	fi
@@ -10581,13 +11196,14 @@ print_audio_data()
 print_cpu_data()
 {
 	eval $LOGFS
-	local cpu_data='' i='' cpu_clock_speed='' cpu_multi_clock_data=''
+	local cpu_data='' i='' cpu_clock_speed='' cpu_multi_clock_data='' a_cpu_speeds=''
 	local bmip_data='' cpu_cache='' cpu_vendor='' cpu_flags='' flag_feature='flags'
-	local a_cpu_working='' cpu_model='' cpu_clock='' cpu_null_error=''
+	local a_cpu_working='' cpu_model='' cpu_clock='' cpu_null_error='' max_speed=''
 	local cpc_plural='' cpu_count_print='' model_plural='' cpu_data_string=''
 	local cpu_physical_count='' cpu_core_count='' cpu_core_alpha='' cpu_type=''
-	local cpu_2_data='' working_cpu='' temp1='' per_cpu_cores=''
-	local line_starter="CPU:" multi_cpu_starter="${C1}Clock Speeds$SEP3${C2} "
+	local cpu_2_data='' working_cpu='' temp1='' per_cpu_cores='' current_max_clock_nu=''
+	local line_starter="CPU:" multi_cpu_starter="${C1}clock speeds$SEP3${C2} "
+	local speed_starter='speed'
 
 	##print_screen_output "A_CPU_DATA[0]=\"${A_CPU_DATA[0]}\""
 	# Array A_CPU_DATA always has one extra element: max clockfreq found.
@@ -10597,6 +11213,8 @@ print_cpu_data()
 
 	IFS=","
 	a_cpu_working=(${A_CPU_DATA[0]})
+	current_max_clock_nu=$(( ${#A_CPU_DATA[@]} - 1 ))
+	a_cpu_speeds=(${A_CPU_DATA[$current_max_clock_nu]})
 	IFS="$ORIGINAL_IFS"
 
 	# Strange (and also some expected) behavior encountered. If print_screen_output() uses $1
@@ -10710,7 +11328,22 @@ print_cpu_data()
 			else
 				a_cpu_working[1]="${a_cpu_working[1]%.*} MHz"
 			fi
-			cpu_clock_speed="${C1}clocked at${C2} ${a_cpu_working[1]}"
+			# this handles bsd case unless we get a way to get max/min cpu speeds
+			if [[ ${a_cpu_speeds[0]} != 'N/A' && ${a_cpu_speeds[2]} != 0 ]];then
+				if [[ $B_EXTRA_EXTRA_DATA == 'true' && ${#A_CPU_DATA[@]} -eq 2 && 
+				      $B_SHOW_CPU == 'true' && ${a_cpu_speeds[1]} != 0 ]];then
+					a_cpu_working[1]="${a_cpu_speeds[0]}/${a_cpu_speeds[1]}/${a_cpu_speeds[2]} MHz"
+					speed_starter='speed/min/max'
+				else
+					if [[ ${a_cpu_speeds[0]} == ${a_cpu_speeds[2]} ]];then
+						a_cpu_working[1]="${a_cpu_speeds[0]} MHz (max)"
+					else
+						a_cpu_working[1]="${a_cpu_speeds[0]}/${a_cpu_speeds[2]} MHz"
+						speed_starter='speed/max'
+					fi
+				fi
+			fi
+			cpu_clock_speed="${C1}$speed_starter$SEP3${C2} ${a_cpu_working[1]}"
 		fi
 		cpu_2_data="$cpu_2_data$cpu_clock_speed"
 	else
@@ -10738,6 +11371,13 @@ print_cpu_data()
 	# we don't do this printing out extra line unless > 1 cpu core
 	# note the numbering, the last array item is the min/max/not found for cpu speeds
 	if [[ ${#A_CPU_DATA[@]} -gt 2 && $B_SHOW_CPU == 'true' ]];then
+		if [[ ${a_cpu_speeds[2]} != 0 ]];then
+			if [[ $B_EXTRA_EXTRA_DATA == 'true' && ${a_cpu_speeds[1]} != 0 ]];then
+				max_speed="${C1}min/max$SEP3${C2} ${a_cpu_speeds[1]}/${a_cpu_speeds[2]} MHz "
+			else
+				max_speed="${C1}max$SEP3${C2} ${a_cpu_speeds[2]} MHz "
+			fi
+		fi
 		for (( i=0; i < ${#A_CPU_DATA[@]}-1; i++ ))
 		do
 			IFS=","
@@ -10750,7 +11390,8 @@ print_cpu_data()
 			#	break
 			#fi
 			# echo $(calculate_line_length "$multi_cpu_starter$SEP3 $cpu_multi_clock_data" )
-			working_cpu="${C1}$(( i + 1 ))$SEP3${C2} ${a_cpu_working[1]%.*} MHz "
+			working_cpu="$max_speed${C1}$(( i + 1 ))$SEP3${C2} ${a_cpu_working[1]%.*} MHz "
+			max_speed=''
 			if [[ -n $cpu_multi_clock_data && \
 			$( calculate_line_length "$multi_cpu_starter$cpu_multi_clock_data$working_cpu" ) -gt $COLS_INNER ]];then
 				cpu_multi_clock_data=$( create_print_line " " "$multi_cpu_starter$cpu_multi_clock_data" )
@@ -10836,7 +11477,8 @@ print_dmidecode_error()
 	if [[ $1 == 'sys' ]];then
 		if [[ $B_FORCE_DMIDECODE == 'true' ]];then
 			sysDmiError='Forcing '
-		elif [[ $BSD_TYPE == '' || -d /sys ]];then
+		# dragonfly has /sys, but it's empty
+		elif [[ $BSD_TYPE == '' || -d /sys/devices ]];then
 			sysDmiError='No /sys/class/dmi; using '
 		else
 			sysDmiError='Using '
@@ -10878,13 +11520,17 @@ print_graphics_data()
 	# this can contain a long No case debugging message, so it's being sliced off
 	# note: using grep -ioE '(No|Yes)' <<< ${A_GLX_DATA[2]} did not work in Arch, no idea why
 	local glx_direct_render=$( gawk '{print $1}' <<< "${A_GLX_DATA[2]}" )
-
+	
 	# set A_GRAPHICS_CARD_DATA
 	if [[ $BSD_TYPE == 'bsd' ]];then
-		if [[ $B_PCICONF_SET == 'false' ]];then
-			get_pciconf_data
+		if [[ $B_PCICONF == 'true' ]];then
+			if [[ $B_PCICONF_SET == 'false' ]];then
+				get_pciconf_data
+			fi
+			get_pciconf_card_data 'display'
+		elif [[ $B_LSPCI == 'true' ]];then
+			get_graphics_card_data
 		fi
-		get_pciconf_card_data 'display'
 	else
 		get_graphics_card_data
 	fi
@@ -11086,10 +11732,10 @@ print_hard_disk_data()
 {
 	eval $LOGFS
 	local hdd_data='' hdd_data_2='' a_hdd_working='' hdd_temp_data='' hdd_string=''
-	local hdd_serial=''
+	local hdd_serial='' dev_string='/dev/'
 	local dev_data='' size_data='' hdd_model='' usb_data='' hdd_name=''
 	local Line_Starter='Drives:' # inherited by print_optical_drives
-	# load A_HDD_DATA
+	# load A_HDD_DATA - this will also populate the full bsd disk data array values
 	get_hdd_data_basic
 	## note: if hdd_model is declared prior to use, whatever string you want inserted will
 	## be inserted first. In this case, it's desirable to print out (x) before each disk found.
@@ -11099,120 +11745,121 @@ print_hard_disk_data()
 	IFS="$ORIGINAL_IFS"
 	local hdd_capacity="${a_hdd_basic_working[0]}"
 	local hdd_used=${a_hdd_basic_working[1]}
-	local bsd_unsupported='Hard drive data not yet supported for BSD systems.'
+	local bsd_error="No HDD Info. $FILE_DMESG_BOOT not readable?"
 	local hdd_name_temp='' part_1_data='' part_2_data=''
 	local row_starter="${C1}HDD Total Size$SEP3${C2} $hdd_capacity ($hdd_used) "
+	# in bsd, /dev/wd0c is disk id
+	if [[ -n $BSD_TYPE ]];then
+		dev_string=''
+	fi
 
 	if [[ $B_SHOW_BASIC_DISK == 'true' || $B_SHOW_DISK == 'true' ]];then
 		## note: the output part of this should be in the print hdd data function, not here
 		get_hard_drive_data_advanced
-		for (( i=0; i < ${#A_HDD_DATA[@]} - 1; i++ ))
-		do
-			# this adds the (x) numbering in front of each disk found, and creates the full disk string
-			IFS=","
-			a_hdd_working=( ${A_HDD_DATA[i]} )
-			IFS="$ORIGINAL_IFS"
-			if [[ $B_SHOW_DISK == 'true' ]];then
-				if [[ -n ${a_hdd_working[3]} ]];then
-					usb_data="${a_hdd_working[3]} "
-				else
-					usb_data=''
-				fi
-				dev_data="/dev/${a_hdd_working[0]} "
-				size_data=" ${C1}size$SEP3${C2} ${a_hdd_working[1]}"
-				if [[ $B_EXTRA_DATA == 'true' && -n $dev_data ]];then
-					hdd_temp_data=$( get_hdd_temp_data "$dev_data" )
-					# error handling is done in get data function
-					if [[ -n $hdd_temp_data ]];then
-						hdd_temp_data=" ${C1}temp$SEP3${C2} ${hdd_temp_data}C"
+		
+		# temporary message to indicate not yet supported
+		if [[ $BSD_TYPE == 'bsd' && -z $Dmesg_Boot_Data ]];then
+			hdd_data=$bsd_error
+			hdd_data=$( create_print_line "$Line_Starter" "$hdd_data" )
+			print_screen_output "$hdd_data"
+			Line_Starter=' '
+		else
+			for (( i=0; i < ${#A_HDD_DATA[@]} - 1; i++ ))
+			do
+				# this adds the (x) numbering in front of each disk found, and creates the full disk string
+				IFS=","
+				a_hdd_working=( ${A_HDD_DATA[i]} )
+				IFS="$ORIGINAL_IFS"
+				if [[ $B_SHOW_DISK == 'true' ]];then
+					if [[ -n ${a_hdd_working[3]} ]];then
+						usb_data="${a_hdd_working[3]} "
 					else
-						hdd_temp_data=''
+						usb_data=''
 					fi
-				fi
-				if [[ $B_EXTRA_EXTRA_DATA == 'true' ]];then
-					hdd_serial=$( get_hdd_serial_number "${a_hdd_working[0]}" )
-					if [[ -z $hdd_serial ]];then
-						hdd_serial='N/A'
+					size_data=" ${C1}size$SEP3${C2} ${a_hdd_working[1]}"
+					if [[ $B_EXTRA_DATA == 'true' ]];then
+						hdd_temp_data=${a_hdd_working[5]}
+						# error handling is done in get data function
+						if [[ -n $hdd_temp_data ]];then
+							hdd_temp_data=" ${C1}temp$SEP3${C2} ${hdd_temp_data}C"
+						else
+							hdd_temp_data=''
+						fi
 					fi
-					hdd_serial=" ${C1}serial$SEP3${C2} $hdd_serial"
+					if [[ $B_EXTRA_EXTRA_DATA == 'true' ]];then
+						hdd_serial=${a_hdd_working[4]}
+						if [[ -z $hdd_serial ]];then
+							hdd_serial='N/A'
+						fi
+						hdd_serial=" ${C1}serial$SEP3${C2} $hdd_serial"
+					fi
+					dev_data="$dev_string${a_hdd_working[0]} "
 				fi
-				dev_data="/dev/${a_hdd_working[0]} "
-			fi
-			if [[ -n ${a_hdd_working[2]} ]];then
-				hdd_name_temp=${a_hdd_working[2]}
-			else
-				hdd_name_temp='N/A'
-			fi
-			# echo "loop: $i"
-			hdd_name="${C1}model$SEP3${C2} $hdd_name_temp"
-			hdd_string="${C1}ID-$((i+1))$SEP3${C2} $usb_data$dev_data$hdd_name$size_data$hdd_serial$hdd_temp_data"
-			part_1_data="$hdd_model$hdd_string "
-			
-			if [[ $i -eq 0 ]];then
-				if [[ $( calculate_line_length "$row_starter$part_1_data" ) -gt $COLS_INNER ]];then
-					hdd_data=$( create_print_line "$Line_Starter" "$row_starter" )
-					print_screen_output "$hdd_data"
-					#echo 0
-					Line_Starter=' '
-					row_starter=''
-					hdd_data=$( create_print_line "$Line_Starter" "$part_1_data" )
-					print_screen_output "$hdd_data"
-					part_1_data=''
-					#echo 1
+				if [[ -n ${a_hdd_working[2]} ]];then
+					hdd_name_temp=${a_hdd_working[2]}
 				else
+					hdd_name_temp='N/A'
+				fi
+				# echo "loop: $i"
+				hdd_name="${C1}model$SEP3${C2} $hdd_name_temp"
+				hdd_string="${C1}ID-$((i+1))$SEP3${C2} $usb_data$dev_data$hdd_name$size_data$hdd_serial$hdd_temp_data"
+				part_1_data="$hdd_model$hdd_string "
+				
+				if [[ $i -eq 0 ]];then
+					if [[ $( calculate_line_length "$row_starter$part_1_data" ) -gt $COLS_INNER ]];then
+						hdd_data=$( create_print_line "$Line_Starter" "$row_starter" )
+						print_screen_output "$hdd_data"
+						#echo 0
+						Line_Starter=' '
+						row_starter=''
+						hdd_data=$( create_print_line "$Line_Starter" "$part_1_data" )
+						print_screen_output "$hdd_data"
+						part_1_data=''
+						#echo 1
+					else
+						hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_1_data" )
+						print_screen_output "$hdd_data"
+						Line_Starter=' '
+						row_starter=''
+						part_1_data=''
+						#echo 2
+					fi
+				fi
+				if [[ $( calculate_line_length "$row_starter$part_2_data$part_1_data" ) -gt $COLS_INNER ]];then
+					if [[ -n $( grep -vE '^[[:space:]]*$' <<< $part_2_data ) ]];then
+						hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_2_data" )
+						print_screen_output "$hdd_data"
+						#echo 3
+						Line_Starter=' '
+						row_starter=''
+						part_2_data=''
+					fi
 					hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_1_data" )
 					print_screen_output "$hdd_data"
-					Line_Starter=' '
-					row_starter=''
 					part_1_data=''
-					#echo 2
-				fi
-			fi
-			if [[ $( calculate_line_length "$row_starter$part_2_data$part_1_data" ) -gt $COLS_INNER ]];then
-				if [[ -n $( grep -vE '^[[:space:]]*$' <<< $part_2_data ) ]];then
-					hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_2_data" )
+					#echo 4
+				elif [[ -n $part_2_data && \
+						$( calculate_line_length "$row_starter$part_2_data$part_1_data" ) -le $COLS_INNER ]];then
+					hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_2_data$part_1_data" )
 					print_screen_output "$hdd_data"
 					#echo 3
 					Line_Starter=' '
 					row_starter=''
+					part_1_data=''
 					part_2_data=''
+				else
+					part_2_data=$part_1_data
 				fi
-				hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_1_data" )
+			done
+			# then print any leftover items
+			if [[ -n $part_2_data ]];then
+				hdd_data=$( create_print_line "$Line_Starter" "$part_2_data" )
 				print_screen_output "$hdd_data"
-				part_1_data=''
-				#echo 4
-			elif [[ -n $part_2_data && \
-			        $( calculate_line_length "$row_starter$part_2_data$part_1_data" ) -le $COLS_INNER ]];then
-				hdd_data=$( create_print_line "$Line_Starter" "$row_starter$part_2_data$part_1_data" )
-				print_screen_output "$hdd_data"
-				#echo 3
-				Line_Starter=' '
-				row_starter=''
-				part_1_data=''
-				part_2_data=''
-			else
-				part_2_data=$part_1_data
+				#echo 5
 			fi
-		done
-		# then print any leftover items
-		if [[ -n $part_2_data ]];then
-			hdd_data=$( create_print_line "$Line_Starter" "$part_2_data" )
-			print_screen_output "$hdd_data"
-			#echo 5
-		fi
-		# temporary message to indicate not yet supported
-		if [[ $BSD_TYPE == 'bsd' ]];then
-			hdd_data=$bsd_unsupported
-			hdd_data=$( create_print_line "$Line_Starter" "$hdd_data" )
-			print_screen_output "$hdd_data"
-			Line_Starter=' '
 		fi
 	else
-		# temporary message to indicate not yet supported
 		hdd_data="$row_starter"
-		if [[ $BSD_TYPE == 'bsd' ]];then
-			hdd_data=$bsd_unsupported
-		fi
 		hdd_data=$( create_print_line "$Line_Starter" "$hdd_data" )
 		print_screen_output "$hdd_data"
 		Line_Starter=' '
@@ -11234,6 +11881,9 @@ print_info_data()
 	local memory="$( get_memory_data )"
 	local processes=$(( $( wc -l <<< "$Ps_aux_Data" ) - 1 ))
 	local up_time="$( get_uptime )"
+	if [[ -z $up_time ]];then
+		up_time='N/A - missing uptime?'
+	fi
 	local patch_version_number=$( get_patch_version_string )
 	local gcc_installed='' gcc_others='' closing_data='' 
 	
@@ -11572,12 +12222,17 @@ print_networking_data()
 	local card_string='' port_plural='' module_version='' pci_bus_id='' bus_usb_text=''
 	local bus_usb_id='' line_starter='Network:' card_string='' card_data='' chip_id=''
 	local driver='' part_2_data=''
+	
 	# set A_NETWORK_DATA
 	if [[ $BSD_TYPE == 'bsd' ]];then
-		if [[ $B_PCICONF_SET == 'false' ]];then
-			get_pciconf_data
+		if [[ $B_PCICONF == 'true' ]];then
+			if [[ $B_PCICONF_SET == 'false' ]];then
+				get_pciconf_data
+			fi
+			get_pciconf_card_data 'network'
+		elif [[ $B_LSPCI == 'true' ]];then
+			get_networking_data
 		fi
-		get_pciconf_card_data 'network'
 	else
 		get_networking_data
 	fi
@@ -11838,10 +12493,16 @@ print_networking_ip_data()
 print_optical_drive_data()
 {
 	eval $LOGFS
-	local a_drives='' drive_data='' counter='' 
+	local a_drives='' drive_data='' counter='' dev_string='/dev/' speed_string='x'
 	local drive_id='' drive_links='' vendor='' speed='' multisession='' mcn='' audio=''
 	local dvd='' state='' rw_support='' rev='' separator='' drive_string='' part_2_data=''
-	get_optical_drive_data
+	if [[ -z $BSD_TYPE ]];then
+		get_optical_drive_data
+	else
+		get_optical_drive_data_bsd
+		dev_string=''
+		speed_string=''
+	fi
 	# 0 - true dev path, ie, sr0, hdc
 	# 1 - dev links to true path
 	# 2 - device vendor - for hdx drives, vendor model are one string from proc
@@ -11876,7 +12537,7 @@ print_optical_drive_data()
 				if [[ -z ${a_drives[0]} ]];then
 					drive_id='N/A'
 				else
-					drive_id="/dev/${a_drives[0]}"
+					drive_id="$dev_string${a_drives[0]}"
 				fi
 				drive_links=$( sed 's/~/,/g' <<< ${a_drives[1]} )
 				if [[ -z $drive_links ]];then
@@ -11952,7 +12613,7 @@ print_optical_drive_data()
 				if [[ -z ${a_drives[5]} ]];then
 					speed='N/A'
 				else
-					speed="${a_drives[5]}x"
+					speed="${a_drives[5]}$speed_string"
 				fi
 				if [[ -z ${a_drives[8]} ]];then
 					audio='N/A'
@@ -12372,7 +13033,7 @@ print_raid_data()
 				fi
 				if [[ ${a_raid_working[3]} == '' ]];then
 					if [[ ${a_raid_working[1]} != 'inactive' ]];then
-						device_components='N/A'
+						device_components=" ${C1}components$SEP3${C2} N/A"
 					fi
 				else
 					for component in ${a_raid_working[3]}
@@ -12790,9 +13451,9 @@ print_repo_data()
 		while read repo_line
 		do
 			(( repo_count++ ))
-			repo_type=$( cut -d ':' -f 1 <<< $repo_line )
-			file_name=$( cut -d ':' -f 2 <<< $repo_line )
-			file_content=$( cut -d ':' -f 3-7 <<< $repo_line )
+			repo_type=$( cut -d '^' -f 1 <<< $repo_line )
+			file_name=$( cut -d '^' -f 2 <<< $repo_line )
+			file_content=$( cut -d '^' -f 3-7 <<< $repo_line )
 			# this will dump unwanted white space line starters. Some irc channels
 			# use bots that show page title for urls, so need to break the url by adding 
 			# a white space.
