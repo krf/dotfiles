@@ -40,6 +40,9 @@ alias apu='sudo apt-get update; sudo apt-get dist-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias psg='ps aux | grep'
 
+# Alias for pandoc
+alias pandoc.pdf="pandoc -s -V geometry:margin=1in -V documentclass:article"
+
 # Aliases (make tools in /sbin available)
 if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
