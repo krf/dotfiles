@@ -2,10 +2,10 @@
 
 global
 
-    qtdir /home/krf/devel/build/qt5/qtbase
-    source-dir /home/krf/devel/src/kf5
-    build-dir /home/krf/devel/build/kf5
-    kdedir /home/krf/devel/install/kf5
+    qtdir /home/kfunk/devel/build/qt5/qtbase
+    source-dir /home/kfunk/devel/src/kf5
+    build-dir /home/kfunk/devel/build/kf5
+    kdedir /home/kfunk/devel/install/kf5
 
     git-repository-base kde-projects kde:
 
@@ -19,7 +19,7 @@ global
 
 end global
 
-include /home/krf/devel/src/kdesrc-build/kf5-qt5-build-include
+include /home/kfunk/devel/src/kdesrc-build/kf5-qt5-build-include
 
 module-set
     repository kde-projects
