@@ -9,6 +9,13 @@ export VALGRIND_OPTS="\
     --suppressions=$HOME/.valgrind/generated.supp"
 export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $? )
 
+# Exports: Set QT_MESSAGE_PATTERN
+c=`echo -e "\033"`
+export QT_MESSAGE_PATTERN_DEFAULT="[%{appname}(%{pid})/(%{category}) ${c}[31m%{if- debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
+export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
+unset c
+export QT_MESSAGE_PATTERN=$QT_MESSAGE_PATTERN_DEFAULT
+
 # Aliases (shortcuts)
 alias cp='nocorrect cp' # ~ on cp
 alias dmesg='dmesg -T'
