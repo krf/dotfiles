@@ -1,6 +1,6 @@
 #!/bin/sh
 
-sudo apt-get install -y ack-grep cgdb git kdesdk-scripts pastebinit vim zsh \
+sudo apt-get install -y ack-grep cgdb git gparted kdesdk-scripts pastebinit vim zsh \
     chromium-browser quassel-client pidgin virtualbox yakuake zim \
     build-essential clang-3.5 \
     linux-tools-common mesa-utils \
