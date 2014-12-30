@@ -1,7 +1,7 @@
 #!/bin/sh
 
-sudo apt-get install -y ack-grep cgdb git gparted kdesdk-scripts pastebinit vim zsh \
-    chromium-browser quassel-client pidgin virtualbox yakuake zim \
+sudo apt-get install -y ack-grep cgdb git git-svn kdesdk-scripts kdiff3 ninja-build pastebinit vim zsh \
+    chromium-browser gparted quassel-client pidgin virtualbox yakuake zim \
     build-essential clang-3.5 \
     linux-tools-common mesa-utils \
     gperf `# for Qt5 webkit` \
