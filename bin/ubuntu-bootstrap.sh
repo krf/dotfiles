@@ -1,9 +1,7 @@
 #!/bin/sh
 
-sudo apt-get install -y ack-grep cgdb git git-svn kdesdk-scripts kdiff3 ninja-build pastebinit vim zsh \
-    chromium-browser gparted quassel-client pidgin virtualbox yakuake zim \
-    build-essential clang-3.5 \
-    linux-tools-common mesa-utils \
+sudo apt-get install -y ack-grep acpi build-essential clang-3.5 cgdb git git-svn kdesdk-scripts kdiff3 linux-tools-common mesa-utils nethogs ninja-build pastebinit powertop vim zsh `# CLI` \
+    chromium-browser gparted quassel-client pidgin virtualbox yakuake zim `# GUI` \
     gperf `# for Qt5 webkit` \
     libjson-perl libxml-parser-perl `# for kdesrc-build` \
     libboost-dev `# for kdevelop` \
