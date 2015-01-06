@@ -1,8 +1,10 @@
 #!/bin/sh
 
-sudo apt-get install -y ack-grep acpi build-essential clang-3.5 cgdb git git-svn kdesdk-scripts kdiff3 linux-tools-common mesa-utils nethogs ninja-build pastebinit powertop vim zsh `# CLI` \
-    chromium-browser gparted quassel-client pidgin virtualbox yakuake zim `# GUI` \
+sudo apt-get install -y ack-grep acpi bzr build-essential clang-3.5 cgdb git git-svn imagemagick kdesdk-scripts kdiff3 linux-tools-common mercurial mesa-utils nethogs ninja-build pastebinit powertop valgrind vim zsh `# CLI` \
+    chromium-browser gparted kde-baseapps-bin kleopatra quassel-client pidgin virtualbox yakuake zim `# GUI` \
     gperf `# for Qt5 webkit` \
+    hunspell-de-de `# for libreoffice` \
+    libgetopt-euclid-perl `# for git-blame-stats` \
     libjson-perl libxml-parser-perl `# for kdesrc-build` \
     libboost-dev `# for kdevelop` \
 
