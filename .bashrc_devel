@@ -80,6 +80,18 @@ function cd() {
   fi
 }
 
+##
+# Get build dir of the current working-directory or $1, if set
+#
+function getbuilddir {
+    if test -n "$1"; then
+        dir="$1"
+    else
+        dir="$PWD"
+    fi
+    echo $dir | sed -e s,$KDE_SRC,$KDE_BUILD,
+}
+
 
 ##
 # A function to easily change to the build directory.
