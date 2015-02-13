@@ -9,6 +9,7 @@
 # $ foreachsubdir eval echo "\$PWD"
 
 for dir in ./*/; do
+    echo "cd'ing to $dir ..."
     cd $dir
     $*
     cd ..
