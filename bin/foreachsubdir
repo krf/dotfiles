@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Run $* in each subdirectory from the current directory (non-recursive)
+#
+# Usage:
+# $ foreachsubdir git push
+#
+# Tip: If you need the current dir inside your command, use eval and quote variables:
+# $ foreachsubdir eval echo "\$PWD"
+
+for dir in ./*/; do
+    cd $dir
+    $*
+    cd ..
+done

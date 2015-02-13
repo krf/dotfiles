@@ -37,6 +37,8 @@ function __env-qt_main() {
     export QT_PLUGIN_PATH=$QTDIR/plugins
     export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
     export QML2_IMPORT_PATH=$QTDIR/qml
+    # WTH is this needed???
+    export QT_QPA_PLATFORM_PLUGIN_PATH=$QTDIR/plugins/platforms/
     echo "Done."
 }
 
