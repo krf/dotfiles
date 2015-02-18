@@ -17,6 +17,7 @@ unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_DEFAULT"
 
 # Aliases (shortcuts)
+alias chmox="chmod +x"
 alias cp='nocorrect cp' # ~ on cp
 alias dmesg='dmesg -T'
 alias mv='nocorrect mv' # no spelling correction on mv
