@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if ! branch=$(git symbolic-ref --short -q HEAD)
+then
+    echo "Not on any branch" >&2
+    exit 2
+fi
+
+if ! remote=$(git config "branch.${branch}.remote")
+then
+    echo "Could not find remote for branch '${branch}'" >&2
+    exit 2
+fi
+
+receivepack=$(git config "remote.${remote}.receivepack")
+
+case "$1" 
+in
+    add)
+        shift
+
+        for email in "$@"
+        do
+            receivepack="${receivepack:-git receive-pack} --reviewer=${email}"
+        done
+
+        git config "remote.${remote}.receivepack" "${receivepack}"
+        ;;
+
+    *)
+        for arg in ${receivepack}; do echo ${arg}; done | sed -ne 's/^--reviewer=//p'
+        ;;
+esac
+
