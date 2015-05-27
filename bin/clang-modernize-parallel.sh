@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CLANG_VERSION=3.7
+CLANG_VERSION=3.6
 ROOT_DIR=$(mktemp -d)
 
 find . -iname "*.cpp" -or -iname "*.cc" | \
