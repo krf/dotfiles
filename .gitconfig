@@ -2,6 +2,9 @@
 	email = kfunk@kde.org
 	name = Kevin Funk
 
+[pull]
+	rebase = true
+
 [push]
 	default = current
 
@@ -68,6 +71,7 @@
 	pushInsteadOf = git://gitorious.org/
 
 [rebase]
+	autostash = true
 	stat = true
 
 # vim: set noexpandtab:
