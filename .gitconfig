@@ -36,8 +36,9 @@
 	    --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
 	    --abbrev-commit --date=relative
 	lo = log -u --stat
-	r = !git fetch --all -p && git rebase --autostash
+	r = pull --rebase
 	s = status -uno
+	up = !git fetch --all && git stash && git pull --rebase && git stash pop
 
 	gpush = push gerrit HEAD:refs/for/master
 	gpush-qt-dev = push gerrit HEAD:refs/for/dev
