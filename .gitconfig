@@ -62,6 +62,8 @@
 	pushInsteadOf = kde:
 	pushInsteadOf = git://anongit.kde.org/
 	pushInsteadOf = git://anongit1.kde.org/
+[url "git@git.kde.org:"]
+	pushInsteadOf = kde:
 [url "git://github.com/"]
 	insteadOf = "github:"
 [url "git@github.com:"]
@@ -75,5 +77,3 @@
 	stat = true
 
 # vim: set noexpandtab:
-[url "git@git.kde.org:"]
-	pushInsteadOf = kde:
