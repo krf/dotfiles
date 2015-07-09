@@ -63,6 +63,9 @@ alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu
 # Aliases (Vim)
 alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
+# Aliases (Profiling)
+alias valgrind-callgrind='valgrind --tool=callgrind --fn-skip="QMetaObject::activate*" --fn-skip="QMetaObject::metacall*" --fn-skip="*::qt_metacall*" --fn-skip="*::qt_static_metacall*"'
+
 # Functions
 # NAME: mkcd - mkdir and cd into it
 # SYNOPSIS: mkcd DIRECTORY
