@@ -40,10 +40,6 @@
 	s = status -uno
 	up = !git fetch --all && git stash && git pull --rebase && git stash pop
 
-	gpush = push gerrit HEAD:refs/for/master
-	gpush-qt-dev = push gerrit HEAD:refs/for/dev
-	gpush-qt-stable = push gerrit HEAD:refs/for/stable
-
 	pushall = !git remote | xargs -n1 git push
 	pushalltags = !git remote | xargs -n1 git push --tags
 
