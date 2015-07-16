@@ -1,0 +1,552 @@
+#!/usr/bin/perl
+# Copyright (C) 2015 The Qt Company Ltd.
+# Contact: http://www.qt.io/licensing/
+#
+# You may use this file under the terms of the 3-clause BSD license.
+# See the file LICENSE from this package for details.
+#
+
+use strict;
+use warnings;
+no warnings qw(io);
+
+use Carp;
+$SIG{__WARN__} = \&Carp::cluck;
+
+use File::Spec;
+use File::Basename;
+use IPC::Open3 qw(open3);
+
+# Cannot use Pod::Usage for this file, since git on Windows will invoke its own perl version, which
+# may not (msysgit for example) support this module, even if it's considered a Core module.
+sub usage
+{
+    print << "EOM";
+Usage:
+    git gpush [opts] [[sha1/ref-from]:[ref-to]] [+<reviewer>] [=<CC user>] [-- <push opts>]
+
+    Pushes Changes to Gerrit and adds reviewers and CC to the PatchSets.
+
+Description:
+    This script is used to push PatchSets to Gerrit, and at the same
+    time add reviewers and CCs to the PatchSets pushed.
+
+    You can use email addresses, Gerrit usernames or aliases for the
+    name of the reviewers/CCs.
+
+    If no sha1 or ref-from is specified, 'HEAD' is used.
+    Note that git gpush can be used in the middle of an interactive
+    rebase, in which case ref-from can often be omitted.
+
+    If no ref-to is specified, the remote tracking branch for 'ref-from'
+    is used as
+        'refs/for/<remote tracking branch>'.
+
+    If no remote is specified or configured, 'gerrit' is used. You may
+    configure a remote like this:
+        git config gpush.remote <remote name>
+
+    If all the options above have been populated, the remainder
+    options are passed on directly to the normal 'git push' command.
+    If you want to avoid specifying all options first, any options
+    specified after a '--' are also passed on directly to the
+    underlying 'git push' command.
+
+Options:
+    -d, --draft
+        Mark the pushed Changes as drafts. This switch is usually
+        unnecessary, as gpush will recognize WIP Changes by subject.
+
+    -p, --publish
+        Do not mark the pushed Changes as drafts even if they have
+        WIP markers.
+
+    -r, --remote
+        Specify the git remote to push to. The default is 'gerrit'.
+
+    --aliases
+        Report all registered aliases and quit.
+
+    -n, --dry-run
+        Do everything except actually pushing any commits.
+
+    -v, --verbose
+        Show the resolved aliases, SHA1s of commits, and other information.
+
+    -q, --quiet
+        Suppress the usual output about what is pushed where.
+
+    --debug
+        Print debug information.
+
+Configuring Aliases:
+    Aliases are read from the
+        .git-gpush-aliases
+    located next to the script, then from the git config which may
+    have aliases set either locally in the current repository,
+    globally (in your ~/.gitconfig), or system-wide.
+
+    You can add aliases to your global git config like this:
+        git config --global gpush.alias.<alias key> <alias value>
+    and if you only want it to be local to the current repository,
+    just drop the --global option.
+    Note that git config keys are constrained regarding allowed
+    characters, so it is impossible to map some IRC nicks via git
+    configuration.
+
+    An alias may contain multiple comma-separated email addresses;
+    for example, to set a single alias for an entire team.
+
+    Inside .git-gpush-aliases, each alias may also be a comma-separated
+    list, in case a user uses multiple handles.
+
+Copyright:
+    Copyright (C) 2015 The Qt Company Ltd.
+    Contact: http://www.qt.io/licensing/
+
+License:
+    You may use this file under the terms of the 3-clause BSD license.
+EOM
+}
+
+my $debug = 0;
+my $verbose = 0;
+my $quiet = 0;
+my $dry_run = 0;
+
+my $remote = "gerrit";
+my $remote_override = 0;
+my $ref_from = "HEAD";
+my $ref_to = "";
+my $ref_override = 0;
+my $draft = 0;
+
+my %aliases;
+
+my @reviewers;
+my @CCs;
+
+my @arguments;
+
+my %gitconfig;
+
+sub format_cmd(@)
+{
+    return join(' ', map { /\s/ ? '"' . $_ . '"' : $_ } @_);
+}
+
+use constant {
+    NUL_STDIN => 0,
+    USE_STDIN => 1,
+    # FWD_STDIN is not needed
+    NUL_STDOUT => 0,
+    USE_STDOUT => 4,
+    FWD_STDOUT => 8,
+    NUL_STDERR => 0,
+    # USE_STDERR is not needed
+    FWD_STDERR => 32,
+    FWD_OUTPUT => 40,
+    SILENT_STDIN => 64,  # Suppress debug output for stdin
+    SOFT_FAIL => 256,    # A non-zero exit from the process is not fatal
+    DRY_RUN => 512       # Don't actually run the command if $dry_run is true
+};
+
+sub open_process($@)
+{
+    my ($flags, @cmd) = @_;
+    my %process;
+
+    $flags &= ~DRY_RUN if (!$dry_run);
+    $process{flags} = $flags;
+    if ($flags & DRY_RUN) {
+        print "+ ".format_cmd(@cmd)." [DRY]\n" if ($debug);
+        return \%process;
+    }
+    my $cmd = format_cmd(@cmd);
+    $process{cmd} = $cmd;
+    my ($in, $out, $err);
+    if ($flags & USE_STDIN) {
+        $in = \$process{stdin};
+    } else {
+        $in = \'<&NUL';
+    }
+    if ($flags & USE_STDOUT) {
+        $out = \$process{stdout};
+    } elsif ($flags & FWD_STDOUT) {
+        $out = \'>&STDOUT';
+    } else {
+        $out = \'>&NUL';
+    }
+    if ($flags & FWD_STDERR) {
+        $err = \'>&STDERR';
+    } else {
+        $err = \'>&NUL';
+    }
+    print "+ $cmd\n" if ($debug);
+    open(NUL, '>'.File::Spec->devnull()) or die("Failed to open bitbucket: $!\n");
+    eval { $process{pid} = open3($$in, $$out, $$err, @cmd); };
+    die("Failed to run \"$cmd[0]\": $!\n") if ($@);
+    close(NUL);
+    return \%process;
+}
+
+sub close_process($)
+{
+    my ($process) = @_;
+
+    if ($$process{flags} & DRY_RUN) {
+        $? = 0;
+        return 0;
+    }
+    my $cmd = $$process{cmd};
+    if ($$process{stdout}) {
+        close($$process{stdout}) or die("Failed to close read pipe of '$cmd': $!\n");
+    }
+    waitpid($$process{pid}, 0) or die("Failed to wait for '$cmd': $!\n");
+    if ($? & 128) {
+        die("'$cmd' crashed with signal ".($? & 127).".\n") if ($? != 141); # allow SIGPIPE
+        $? = 0;
+    } elsif ($? && !($$process{flags} & SOFT_FAIL)) {
+        exit($? >> 8);
+    }
+    return 0;
+}
+
+# Write any number of lines to the process' stdin.
+# The input is expected to already contain trailing newlines.
+# This function must be called exactly once iff USE_STDIN is used.
+# Note that this will deadlock with USE_STDOUT if the process outputs
+# too much before all input is written.
+sub write_process($@)
+{
+    my ($process, @input) = @_;
+
+    my $stdin = $$process{stdin};
+    my $silent = ($$process{flags} & SILENT_STDIN);
+    my $dry = ($$process{flags} & DRY_RUN);
+    local $SIG{PIPE} = "IGNORE";
+    foreach (@input) {
+        print "> $_" if ($debug && !$silent);
+        print $stdin $_ if (!$dry);
+    }
+    $dry or close($stdin) or die("Failed to close write pipe of '$$process{cmd}': $!\n");
+}
+
+# Read a line from the process' stdout.
+sub read_process($)
+{
+    my ($process) = @_;
+
+    my $fh = $$process{stdout};
+    $_ = <$fh>;
+    if (defined($_)) {
+        chomp;
+        print "- $_\n" if ($debug);
+    }
+    return $_;
+}
+
+# Read any number of null-terminated fields from the process' stdout.
+sub read_fields($@)
+{
+    my $process = shift;
+    my $fh = $$process{stdout};
+    return 0 if (eof($fh));
+    local $/ = "\0";
+    for (@_) { chop($_ = <$fh>); }
+    return 1;
+}
+
+# The equivalent of system().
+sub run_process($@)
+{
+    my ($flags, @cmd) = @_;
+
+    close_process(open_process($flags, @cmd));
+}
+
+# The equivalent of popen("r").
+sub open_cmd_pipe($@)
+{
+    my ($flags, @cmd) = @_;
+
+    return open_process(USE_STDOUT | FWD_STDERR | $flags, @cmd);
+}
+
+# Run the specified command and try to read exactly one line from its stdout.
+sub read_cmd_line($@)
+{
+    my ($flags, @cmd) = @_;
+
+    my $proc = open_cmd_pipe($flags, @cmd);
+    read_process($proc);
+    close_process($proc);
+    return $_;
+}
+
+sub parse_arguments(@)
+{
+    while (scalar @_) {
+        my $arg = shift @_;
+
+        if ($arg eq "-v" || $arg eq "--verbose") {
+            $verbose = 1;
+        } elsif ($arg eq "-q" || $arg eq "--quiet") {
+            $quiet = 1;
+        } elsif ($arg eq "--debug") {
+            $debug = 1;
+            $verbose = 1;
+        } elsif ($arg eq "-n" || $arg eq "--dry-run") {
+            $dry_run = 1;
+        } elsif ($arg eq "-d" || $arg eq "--draft") {
+            $draft = 1;
+        } elsif ($arg eq "-p" || $arg eq "--publish") {
+            $draft = -1;
+        } elsif ($arg eq "-r" || $arg eq "--remote") {
+            die("--remote needs an argument.\n") if (!@_ || ($_[0] =~ /^-/));
+            $remote = shift @_;
+        } elsif ($arg eq "--aliases") {
+            foreach my $key (sort(keys %aliases)) {
+                print "$key = $aliases{$key}\n";
+            }
+            exit 0;
+        } elsif ($arg eq "-?" || $arg eq "--?" || $arg eq "-h" || $arg eq "--help") {
+            usage();
+            exit 0;
+        } elsif ($arg eq "--") {
+            push @arguments, @_;
+            return;
+        } elsif ($arg =~ /^\+(.+)/) {
+            push @reviewers, split(/,/, lookup_alias($1));
+        } elsif ($arg =~ /^\=(.+)/) {
+            push @CCs, split(/,/, lookup_alias($1));
+        } elsif ($arg =~ /^\-(.+)/) {
+            push @arguments, $arg;
+        } elsif (!$remote_override || !$ref_override) {
+            if ($arg =~ /(.*):(.*)/) {
+                $ref_from = $1 if (defined $1 && $1 ne "");
+                $ref_to = $2 if (defined $2 && $2 ne "");
+                $ref_override = 1;
+            } else {
+                print STDERR "Warning: Specifying a bare remote is deprecated.".
+                             " Use --remote instead.\n";
+                $remote = $arg;
+                $remote_override = 1;
+            }
+        } else {
+            push @arguments, $arg;
+        }
+    }
+
+    die("--quiet and --verbose/--debug are mutually exclusive.\n")
+        if ($quiet && $verbose);
+
+    if ($ref_to =~ s,^refs/for/,,) {
+        die "Pushing to refs/for/ is inconsistent with the --draft option.\n" if ($draft > 0);
+        print STDERR "Notice: it is unnecessary to specify refs/for/ in the target ref.\n"
+            if (!$quiet);
+    } elsif ($ref_to =~ s,^refs/drafts/,,) {
+        die "Pushing to refs/drafts/ is inconsistent with the --publish option.\n" if ($draft < 0);
+        if ($draft) {
+            print STDERR "Notice: it is unnecessary to specify refs/drafts/ in the target ref.\n"
+                if (!$quiet);
+        } else {
+            print STDERR "Notice: prefer the --draft option over specifying refs/drafts/ in the target ref.\n"
+                if (!$quiet);
+            $draft = 1;
+        }
+    }
+}
+
+sub fileContents($)
+{
+    my ($filename) = @_;
+
+    my @contents = "";
+    my $fh;
+    if (-e $filename && open($fh, "< $filename")) {
+        @contents = <$fh>;
+        close $fh;
+    }
+    return @contents;
+}
+
+sub git_configs($)
+{
+    my ($key) = @_;
+    my $ref = $gitconfig{$key};
+    return defined($ref) ? @$ref : ();
+}
+
+sub git_config($;$)
+{
+    my ($key, $dflt) = @_;
+    my @cfg = git_configs($key);
+    return scalar(@cfg) ? $cfg[-1] : $dflt;
+}
+
+sub load_config()
+{
+    my $script_path = dirname($0);
+
+    # Read aliases from .git-gpush-aliases file
+    my $in_aliases = 1;
+    foreach my $line (fileContents("$script_path/.git-gpush-aliases")) {
+        chomp $line;
+        $line =~ s,(#|//).*$,,;             # Remove any comments
+        if ($line =~ /^\[([^]]+)\]/) {
+            if ($1 eq "aliases") {
+                $in_aliases = 1;
+            } elsif ($1 eq "config") {
+                $in_aliases = 0;
+            } else {
+                die("Unrecognized section '$1' in alias file.\n");
+            }
+        } elsif ($line =~ /^\s*([^ =]+)\s*=\s*(.*?)\s*$/) {  # Capture the value
+            if ($in_aliases) {
+                for my $alias (split(/,/, $1)) {
+                    $aliases{$alias} = $2;
+                }
+            } else {
+                push @{$gitconfig{"gpush.$1"}}, $2;
+            }
+        }
+    }
+
+    # Read all git configuration at once, as that's faster than repeated
+    # git invocations, especially under Windows.
+    my $cfg = open_cmd_pipe(0, 'git', 'config', '-l', '-z');
+    while (read_fields($cfg, my $entry)) {
+        $entry =~ /^([^\n]+)\n(.*)$/;
+        push @{$gitconfig{$1}}, $2;
+    }
+    close_process($cfg);
+
+    $remote = git_config('gpush.remote', $remote);
+    die("Configuring ref-from is not supported any more.\n") if (git_config('gpush.ref-from'));
+    die("Configuring ref-to is not supported any more.\n") if (git_config('gpush.ref-to'));
+    foreach (keys %gitconfig) {
+        if (/^gpush\.alias\.(.*)$/) {
+            $aliases{$1} = git_config($_);
+        }
+    }
+}
+
+sub lookup_alias($)
+{
+    my ($user) = @_;
+
+    my $alias = $aliases{$user};
+    if (defined $alias && $alias ne "") {
+        print "Resolved $user to $alias.\n" if ($verbose);
+        return $alias;
+    }
+
+    return $user;
+}
+
+sub add_reviewers()
+{
+    if (@reviewers || @CCs) {
+        my @dudes;
+        push @dudes, "--receive-pack=git receive-pack";
+        push @dudes, map { " --reviewer=$_" } @reviewers;
+        push @dudes, map { " --cc=$_" } @CCs;
+        push @arguments, join('', @dudes); # Single argument to git push
+    }
+}
+
+sub goto_gitdir()
+{
+    my $cdup = read_cmd_line(0, 'git', 'rev-parse', '--show-cdup');
+    chdir($cdup) unless $cdup eq "";
+}
+
+# Find _the_ branch the specified commit lives on. This can be the current
+# branch (and other branches are ignored), or _one_ other branch.
+sub determine_branch($)
+{
+    my ($commit) = @_;
+
+    my $curbranch;
+    my @otherbranches;
+    my $branches = open_cmd_pipe(0, "git", "branch", "--contains", $commit);
+    while (read_process($branches)) {
+        if (/^\* \(/) {
+            # New git versions will tell us the currently rebased branch.
+            if (/^\* \(no branch, rebasing (.*)\)$/) {
+                $curbranch = $1;
+            }
+            last;
+        } elsif (/^\* (.*)$/) {
+            $curbranch = $1;
+            last;
+        } elsif (/^  (.*)$/) {
+            push @otherbranches, $1;
+        }
+    }
+    close_process($branches);
+    if (!defined($curbranch)) {
+        # If the commit is not on the current branch, see if it is on _one_
+        # other branch with a tracking branch.
+        my @goodbranches;
+        foreach my $other (@otherbranches) {
+            push @goodbranches, $other if (defined(git_config("branch.$other.merge")));
+        }
+        $curbranch = $goodbranches[0] if (@goodbranches == 1);
+    }
+    return $curbranch;
+}
+
+sub determine_target()
+{
+    # Validate the source commit, to avoid confusing errors later.
+    run_process(FWD_STDERR, "git", "rev-parse", $ref_from, '--');
+
+    # Detect tracking branch if ref-to is not set
+    if ($ref_to eq "") {
+        # First, try to extract a branch name directly.
+        my $ref = $ref_from;
+        $ref =~ s/[~^].*$//;
+        if ($ref eq "HEAD") {
+            my $sref = read_cmd_line(SOFT_FAIL, "git", "symbolic-ref", "-q", "HEAD");
+            $ref = $sref if (!$?);
+        }
+        $ref =~ s,^refs/heads/,,;
+        run_process(SOFT_FAIL, "git", "rev-parse", "--verify", "-q", "refs/heads/".$ref);
+        if ($?) {
+            # Next, try to deduce a branch from the commit.
+            $ref = determine_branch($ref_from);
+            die("Cannot deduce source branch for $ref_from.\n") if (!defined($ref));
+        }
+        $ref_to = git_config("branch.$ref.merge");
+        die("$ref has no tracking branch.\n") if (!defined($ref_to));
+        $ref_to =~ s,^refs/heads/,,;
+    }
+}
+
+sub push_patches()
+{
+    if (!$draft) {
+        $_ = read_cmd_line(0, 'git', 'log', '--pretty=%s', '-1', $ref_from);
+        $draft = 1 if (/\bWIP\b|\*{3}|^(.)\1*$/i);
+    }
+
+    print "Pushing $ref_from for $ref_to on $remote ...\n" if (!$quiet);
+
+    my @gitcmd = ("git", "push");
+    push @gitcmd, '-v' if ($verbose);
+    push @gitcmd, '-q' if ($quiet);
+    push @gitcmd, '-n' if ($dry_run);
+    push @gitcmd, @arguments;
+    push @gitcmd, $remote, "$ref_from:refs/".($draft > 0 ? 'drafts' : 'for')."/$ref_to";
+
+    run_process(FWD_OUTPUT, @gitcmd);
+}
+
+load_config();
+parse_arguments(@ARGV);
+add_reviewers();
+goto_gitdir();
+determine_target();
+push_patches();

@@ -1,0 +1,186 @@
+#!/usr/bin/perl -w
+####################################################################################################
+#
+# git-qt-grafts
+#
+# Sets up the proper grafts for a Qt repository
+#
+# Copyright (C) 2015 The Qt Company Ltd.
+# Contact: http://www.qt.io/licensing/
+#
+####################################################################################################
+
+use File::Basename;
+use Cwd 'abs_path';
+use strict;
+
+my $history_location;
+
+# Syntax:  fileContents(filename)
+# Returns: String with contents of the file, or empty string if file
+#          doens't exist.
+sub fileContents {
+    my ($filename) = @_;
+    my $filecontents = "";
+    if (-e $filename) {
+        my $FD;
+        open($FD, "< $filename") || die "Could not open $filename for reading, read block?";
+        local $/;
+        binmode $FD;
+        $filecontents = <$FD>;
+        close $FD;
+    }
+    return $filecontents;
+}
+
+sub fileContains {
+    my ($filename, $text) = @_;
+    # purposely not using perl grep here
+    foreach my $line (split /\n/, fileContents("$filename")) {
+        return 1 if ("$line" eq "$text");
+    }
+    return 0;
+}
+
+sub showUsage {
+    my $prg = basename($0);
+    print "Usage: $prg <path to Qt history>:\n";
+}
+
+while ( @ARGV ) {
+    my $arg = shift @ARGV;
+    if ($arg eq "-?" || $arg eq "-h" || $arg eq "-help" || $arg eq "?") {
+        showUsage();
+        exit 0;
+    } elsif (!$history_location) {
+        $history_location = $arg;
+    } else {
+        print "Unknown option: $arg\n\n";
+        showUsage();
+        exit 1;
+    }
+}
+
+# Get current git-dir
+my $git_dir = `git rev-parse --git-dir`;
+chomp $git_dir;
+if (!$git_dir) {
+    print "Cannot find any Git dir!\n";
+    exit 1;
+}
+
+# validate path for history repo
+if (!$history_location || !-e $history_location) {
+    print "You need to provide a path to the monolithic Qt repo!\n";
+    exit 1;
+}
+my $history_git_dir = `cd $history_location && git rev-parse --git-dir`;
+chomp $history_git_dir;
+if (!$history_git_dir  || !-e "$history_location/$history_git_dir/objects") {
+    print "Monolithic Qt repo path is not a valid Git repo!\n";
+    exit 1;
+}
+$history_git_dir = abs_path("$history_location/$history_git_dir");
+my $history_alternates_objects = "$history_git_dir/objects";
+
+# check if we already point to this alternate object store
+my $git_alternates_file = "$git_dir/objects/info/alternates";
+my $found_alternate = fileContains($git_alternates_file, $history_alternates_objects);
+
+# get first commit SHA1 of this repo which mentions branching from a commit
+my $GIT_REVLIST;
+my $git_pid = open($GIT_REVLIST, "git rev-list --reverse --grep='Branched from .*at commit' HEAD |")
+    or die ("Failed to launch Git");
+my @commits;
+while (<$GIT_REVLIST>) {
+    chomp;
+    push(@commits, $_);
+}
+close($GIT_REVLIST);
+
+my $found_any_grafts = 0;
+mkdir("$git_dir/info");
+my $graft_file = "$git_dir/info/grafts";
+my @graft_lines;
+
+foreach my $commit (@commits) {
+    # find the graft point which the commit mentions
+    my $commit_msg = `git show -s --format=%b $commit`;
+    my $graft_to_commit = $commit_msg;
+    $graft_to_commit =~ s/^.+Branched from .+at commit\n([a-f0-9]+)\n.*/$1/s;
+    next if (!$graft_to_commit || $graft_to_commit eq $commit_msg);
+
+    # Preserve any existing parents of the commit.
+    my @existing_parents;
+    my $GIT_CAT_FILE;
+    open($GIT_CAT_FILE, "git cat-file commit $commit |") or die ("Failed to launch Git");
+    while (<$GIT_CAT_FILE>) {
+        if (/^parent ([0-9a-z]{40})/i) {
+            push(@existing_parents, $1);
+        }
+    }
+    close($GIT_CAT_FILE);
+
+    # check that we don't already have this graft already setup
+    my $graft_line = "$commit $graft_to_commit";
+    $graft_line .= " " . join(" ", @existing_parents) if (@existing_parents);
+    my $found_graft = fileContains($graft_file, $graft_line);
+    if ($found_graft) {
+        print "Graft for $commit already exists. Skipping...\n";
+        $found_any_grafts = 1;
+        next;
+    }
+
+    # verify that alternate object store contains the commit we want to graft to
+    if (system("cd $history_location && git cat-file -e $graft_to_commit") != 0) {
+        print "History repo ($history_location) does not contain commit $graft_to_commit!\n";
+        print "Skipping this graft...\n";
+        next;
+    }
+
+    print "Grafted $commit -> $graft_to_commit\n";
+    push(@graft_lines, $graft_line);
+    $found_any_grafts = 1;
+}
+if (!$found_any_grafts) {
+    print "This repo does not refer to a graft point, so no grafts added!\n";
+    exit 0;
+}
+
+# if our alternates file didn't contain the "history repo" path already
+# add its path now
+if (!$found_alternate) {
+    my $ALTERNATES_FILE;
+    open($ALTERNATES_FILE, ">> $git_alternates_file") || die "Could not open $git_alternates_file for writing, wrong permissions?";
+    print $ALTERNATES_FILE "$history_alternates_objects\n";
+    # Add alternates from alternates file in the history repo, in case it has additional alternates.
+    my $HISTORY_ALTERNATES_FILE;
+    if (open($HISTORY_ALTERNATES_FILE, "< $history_git_dir/objects/info/alternates")) {
+        print("Reusing existing alternates in history repository\n");
+        while (<$HISTORY_ALTERNATES_FILE>) {
+            chomp;
+            print $ALTERNATES_FILE $_ if (!fileContains($git_alternates_file, $_));
+        }
+        close($HISTORY_ALTERNATES_FILE);
+    }
+    close($ALTERNATES_FILE);
+}
+
+# Add graft lines from graft file in the history repo, in case it has additional grafts.
+my $HISTORY_GRAFT_FILE;
+if (open($HISTORY_GRAFT_FILE, "< $history_git_dir/info/grafts")) {
+    print("Reusing existing grafts in history repository\n");
+    while (<$HISTORY_GRAFT_FILE>) {
+        chomp;
+        push(@graft_lines, $_) if (!fileContains($graft_file, $_));
+    }
+    close($HISTORY_GRAFT_FILE);
+}
+
+# add graft
+if (@graft_lines) {
+    my $GRAFT_FILE;
+    open($GRAFT_FILE, ">> $graft_file") || die "Could not open $graft_file for writing, wrong permissions?";
+    print $GRAFT_FILE join("\n", @graft_lines) . "\n";
+    close($GRAFT_FILE);
+}
