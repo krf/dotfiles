@@ -2,7 +2,7 @@
 
 global
 
-    qtdir /home/kfunk/devel/build/qt5/qtbase
+    qtdir /home/kfunk/devel/build/qt5.4/qtbase
     source-dir /home/kfunk/devel/src/kf5
     build-dir /home/kfunk/devel/build/kf5
     kdedir /home/kfunk/devel/install/kf5
@@ -13,9 +13,11 @@ global
 
     #install-session-driver true
 
-    custom-build-command ninja -j20
-    cmake-options -DCMAKE_BUILD_TYPE:STRING=debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja"
+    custom-build-command ninja -j5
+    cmake-options -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja"
     branch-group kf5-qt5
+
+    ignore-kde-structure true
 
 end global
 

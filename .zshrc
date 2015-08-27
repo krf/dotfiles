@@ -15,6 +15,7 @@ export QT_MESSAGE_PATTERN_DEFAULT="[%{appname}(%{pid})/(%{category}) ${c}[31m%{i
 export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
 unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_DEFAULT"
+export QT_LOGGING_CONF="$HOME/.qtlogging.ini"
 
 # Aliases (shortcuts)
 alias chmox="chmod +x"
@@ -37,6 +38,7 @@ alias ll='ls -l'
 alias la='ls -al'
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=auto'; fi
 alias netcat='nc'
+alias nowrap='cut -c1-$COLUMNS' # example: 'grep foo file | nowrap'
 alias fnd="find . -iname"
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi

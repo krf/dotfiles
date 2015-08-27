@@ -1,5 +1,5 @@
 ### Sed magic examples
-$ perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*py")
+$ perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*cpp" -or -name "*.h")
 $ perl -i -pe 'BEGIN{undef $/;} s/(install.*?_version\.h.*?DESTINATION) (\${(.*?)})/\1 foo' CMakeLists.txt # multi-line replace, non-greedy
 $ perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
 $ perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
