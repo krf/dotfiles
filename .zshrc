@@ -11,7 +11,7 @@ export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $?
 
 # Exports: Set QT_MESSAGE_PATTERN
 c=`echo -e "\033"`
-export QT_MESSAGE_PATTERN_DEFAULT="[%{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
+export QT_MESSAGE_PATTERN_DEFAULT="[%{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}(%{line})${c}[0m: %{message}"
 export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
 unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_DEFAULT"
@@ -67,6 +67,9 @@ alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 
 # Aliases (Profiling)
 alias valgrind-callgrind='valgrind --tool=callgrind --fn-skip="QMetaObject::activate*" --fn-skip="QMetaObject::metacall*" --fn-skip="*::qt_metacall*" --fn-skip="*::qt_static_metacall*"'
+
+# Alias for quickly compiling Qt-related source file
+alias g++-qt5='g++ -fPIC -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -lQt5Core'
 
 # Functions
 # NAME: mkcd - mkdir and cd into it

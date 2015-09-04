@@ -73,4 +73,7 @@
 	autostash = true
 	stat = true
 
+[include]
+	path = ~/.gitconfig-private
+
 # vim: set noexpandtab:
