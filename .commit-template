@@ -2,6 +2,7 @@
 
 #BUG: <bug number>
 #FIXED-IN: <optional release version>
+#Differential Revision: <phabricator url>
 #FEATURE: <optional bug number>
 #CCBUG: <bug number>
 #CCMAIL: <email>

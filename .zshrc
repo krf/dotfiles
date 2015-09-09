@@ -88,6 +88,8 @@ function env-devel() {
     BUILDNAME="$1" source ~/.bashrc_devel
 }
 
+alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
+
 # History settings
 HISTSIZE=10000 # Set command search history
 HISTFILE=~/.zsh_history
