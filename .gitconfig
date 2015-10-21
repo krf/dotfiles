@@ -1,3 +1,5 @@
+# vim: set noexpandtab:
+
 [user]
 	email = kfunk@kde.org
 	name = Kevin Funk
@@ -76,4 +78,5 @@
 [include]
 	path = ~/.gitconfig-private
 
-# vim: set noexpandtab:
+[rerere]
+	enabled = true
