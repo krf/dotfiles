@@ -37,29 +37,34 @@ function cmakekde {
     if [ "$srcFolder" = "$current" ]; then
         cb
     fi
-    # To save disk space change "debugfull" to "debug"
     cmake "$srcFolder" \
-          -G "Ninja" \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
           -DCMAKE_INSTALL_PREFIX=$KDEDIR \
           -DCMAKE_BUILD_TYPE=Debug $*
 
-        # Comment out the following two lines to stop builds waiting after
-        # the configuration step, so that the user can check configure output
-#        echo "Press <ENTER> to continue..."
-#        read userinput
-
-        # Note: To speed up compiling, change 'make -j2' to 'make -jx',
-        #   where x is your number of processors +1
-        #nice make -j2 && make install
-        ninja $MAKEFLAGS install
-        #Use this line instead if using icecream
-        #nice make CC=icecc -j6 && make install
-        RETURN=$?
-        cs
-        return ${RETURN}
+    make $MAKEFLAGS install
+    RETURN=$?
+    cs
+    return ${RETURN}
 }
 
+function qmakekde {
+    # get srcFolder for current dir
+    srcFolder=`pwd | sed -e s,$KDE_BUILD,$KDE_SRC,`
+
+    # we are in the src folder, change to build directory
+    # Alternatively, we could just use makeobj in the commands below...
+    current=`pwd`
+    if [ "$srcFolder" = "$current" ]; then
+        cb
+    fi
+    qmake "$srcFolder" \
+        PREFIX=$KDEDIR
+    make $MAKEFLAGS install
+    RETURN=$?
+    cs
+    return ${RETURN}
+}
 
 function cd() {
   if test -z "$1"; then
