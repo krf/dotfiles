@@ -59,7 +59,8 @@ function qmakekde {
         cb
     fi
     qmake "$srcFolder" \
-        PREFIX=$KDEDIR
+        CONFIG-=release CONFIG+=debug \
+        PREFIX=$KDEDIR $*
     make $MAKEFLAGS install
     RETURN=$?
     cs
