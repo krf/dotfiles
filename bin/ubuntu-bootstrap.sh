@@ -9,3 +9,4 @@ sudo apt-get install -y ack-grep acpi apt-file automake bzr build-essential ccac
     libboost-dev `# for kdevelop` \
 
 sudo apt-get build-dep -y kdelibs5-dev qt5-default
+sudo pip install thefuck

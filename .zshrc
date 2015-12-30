@@ -236,3 +236,6 @@ zstyle ':completion:*:functions' ignored-patterns '_*'
 
 # trigger chpwd functions
 cd $PWD
+
+# 'thefuck' hook -- see https://github.com/nvbn/thefuck
+eval "$(thefuck --alias)"
