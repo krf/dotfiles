@@ -85,3 +85,5 @@
 	enabled = true
 [init]
 	templatedir = ~/.git-templates
+[merge "ours"]
+	driver = true
