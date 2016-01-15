@@ -3,11 +3,14 @@ export EDITOR="vim" # Set default editor
 export LANGUAGE=C # Console messages in english please
 export PYTHONSTARTUP="$HOME/.pythonrc"
 export KDE_COLOR_DEBUG=1
+export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $? )
+
+# Exports (development)
 export VALGRIND_OPTS="\
     --suppressions=$HOME/.valgrind/default.supp \
     --suppressions=$HOME/.valgrind/other.supp \
     --suppressions=$HOME/.valgrind/generated.supp"
-export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $? )
+export ASAN_OPTIONS=suppressions=$HOME/.asan.supp
 
 # Exports: Set QT_MESSAGE_PATTERN
 c=`echo -e "\033"`
