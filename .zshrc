@@ -241,4 +241,6 @@ zstyle ':completion:*:functions' ignored-patterns '_*'
 cd $PWD
 
 # 'thefuck' hook -- see https://github.com/nvbn/thefuck
-eval "$(thefuck --alias)"
+if hash thefuck 2> /dev/null; then
+    eval "$(thefuck --alias)"
+fi
