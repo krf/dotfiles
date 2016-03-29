@@ -75,6 +75,8 @@
 	pushInsteadOf = "git://github.com/"
 [url "git@gitorious.org:"]
 	pushInsteadOf = git://gitorious.org/
+[url "ssh://krf@codereview.qt-project.org:29418/"]
+	insteadOf = "qt:"
 
 [rebase]
 	autostash = true
