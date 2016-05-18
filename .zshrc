@@ -43,6 +43,7 @@ if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=auto'; fi
 alias netcat='nc'
 alias nowrap='cut -c1-$COLUMNS' # example: 'grep foo file | nowrap'
 alias fnd="find . -iname"
+function f() { fnd "*$1*" }
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
 alias api='sudo apt-get install'
@@ -244,3 +245,9 @@ cd $PWD
 if hash thefuck 2> /dev/null; then
     eval "$(thefuck --alias)"
 fi
+
+# linuxbrew
+
+export PATH="$HOME/.linuxbrew/bin:$PATH"
+export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
+export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
