@@ -90,5 +90,7 @@
 	enabled = true
 [init]
 	templatedir = ~/.git-templates
+[core]
+	attributesfile = ~/.gitattributes_global
 [merge "ours"]
 	driver = true
