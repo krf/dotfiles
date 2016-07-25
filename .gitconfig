@@ -58,6 +58,8 @@
 	outgoing = log @{u}..
 	incoming = log ..@{u}
 
+	reset-to-upstream = reset --hard @{upstream}
+
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
 # URL rewrites
