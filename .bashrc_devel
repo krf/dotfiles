@@ -38,6 +38,7 @@ function cmakekde {
         cb
     fi
     cmake "$srcFolder" \
+          -G "Ninja" \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
           -DCMAKE_INSTALL_PREFIX=$KDEDIR \
           -DCMAKE_BUILD_TYPE=Debug $*
