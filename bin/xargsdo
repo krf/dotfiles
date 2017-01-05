@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+# Example usage: kde-frameworks-list.sh | xargsdo "(cd %; git diff)"
+
+xargs -n1 -I% sh -c "$@"
