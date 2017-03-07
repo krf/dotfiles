@@ -11,12 +11,15 @@ export VALGRIND_OPTS="\
     --suppressions=$HOME/.valgrind/other.supp \
     --suppressions=$HOME/.valgrind/generated.supp"
 export ASAN_OPTIONS=suppressions=$HOME/.asan.supp
+export ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-3.9/bin/llvm-symbolizer
+export UBSAN_OPTIONS=print_stacktrace=1
+export CTEST_PARALLEL_LEVEL=$(nproc)
 
 # Exports: Set QT_MESSAGE_PATTERN
 c=`echo -e "\033"`
-export QT_MESSAGE_PATTERN_DEFAULT="%{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}(%{line})${c}[0m: %{message}"
-export QT_MESSAGE_PATTERN_NO_COLOR="%{appname}(%{pid})/(%{category}) %{if-debug}%{endif}%{function}(%{line}): %{message}"
-export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/(%{category}) ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
+export QT_MESSAGE_PATTERN_DEFAULT="%{appname}(%{pid})/%{category}: ${c}[31m%{if-debug}${c}[34m%{endif}%{function}(%{line})${c}[0m: %{message}"
+export QT_MESSAGE_PATTERN_NO_COLOR="%{appname}(%{pid})/%{category}: %{if-debug}%{endif}%{function}(%{line}): %{message}"
+export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/%{category}: ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
 unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_DEFAULT"
 export QT_LOGGING_CONF="$HOME/.qtlogging.ini"
@@ -56,7 +59,7 @@ alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias bt='echo 0 | gdb -batch-silent -ex "run" -ex "set logging overwrite on" -ex "set logging file gdb.bt" -ex "set logging on" -ex "set pagination off" -ex "handle SIG33 pass nostop noprint" -ex "echo backtrace:\n" -ex "backtrace full" -ex "echo \n\nregisters:\n" -ex "info registers" -ex "echo \n\ncurrent instructions:\n" -ex "x/16i \$pc" -ex "echo \n\nthreads backtrace:\n" -ex "thread apply all backtrace" -ex "set logging off" -ex "quit" --args'
 alias psg='ps aux | grep'
 alias notify-done='notify-send -t 3600000 Done'
-alias ag='ag --hidden -t'
+#alias ag='ag --hidden -t'
 
 # Alias for pandoc
 alias pandoc.pdf="pandoc -s -V geometry:margin=1in -V documentclass:article"
@@ -66,7 +69,7 @@ if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
 # Aliases (convenience)
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
-alias whatismyip="wget -qO- checkip.dyndns.org | grep -Eo '[0-9\.]+' | xargs -I{} sh -c 'echo \"IP: {}\"; echo \"Name: \$(dig -x {} +short)\"'"
+alias whatismyip="curl ipinfo.io/ip"
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"
 
 # Aliases (Vim)
