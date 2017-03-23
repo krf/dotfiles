@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Disable leak detection in ASAN, otherwise the kdev-pg-qt binary will return with non-zero return code
+ASAN_OPTIONS=detect_leaks=0
+
 while [[ $# > 0 ]]
 do
     key="$1"
