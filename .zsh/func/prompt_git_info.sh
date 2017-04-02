@@ -23,7 +23,7 @@ if [ -n "$__CURRENT_GIT_ROOT" ]; then
     fi
 
     if [ -n "$__CURRENT_GIT_BRANCH_IS_DIRTY" ]; then
-        s+="|⚡"
+        s+="|~"
     fi
 
     s+="]"
