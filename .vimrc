@@ -42,7 +42,7 @@ if has("autocmd")
 endif
 
 " Colorscheme
-colorscheme ansi_blows
+highlight LineNr ctermfg=grey
 
 " The following are commented out as they cause vim to behave a lot
 " differently from regular Vi. They are highly recommended though.
@@ -181,3 +181,8 @@ set wrap lbr
 
 " Enable spell-checking
 set spell spelllang=en_us
+
+" Remove annoying warnings + do not use background colors
+hi SpellLocal ctermbg=NONE
+hi SpellRare ctermbg=NONE
+hi SpellBad cterm=underline ctermbg=NONE
