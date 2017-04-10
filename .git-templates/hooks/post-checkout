@@ -8,13 +8,18 @@
 #
  
 # https://github.com/gitpython-developers/GitPython
-import git
 import ConfigParser
 import os
 import sys
- 
+
+try:
+    import git1
+except ImportError:
+    print("Warning: python-git module not available, can't invoke post-checkout script")
+    sys.exit(1)
+
 repo = git.Repo(os.getcwd())
- 
+
 # Don't do anything if an identity is already configured in this
 # repo's .git/config
 config = repo.config_reader(config_level = 'repository')
