@@ -13,7 +13,7 @@ import os
 import sys
 
 try:
-    import git1
+    import git
 except ImportError:
     print("Warning: python-git module not available, can't invoke post-checkout script")
     sys.exit(1)
