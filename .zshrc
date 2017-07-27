@@ -13,7 +13,12 @@ export VALGRIND_OPTS="\
 export ASAN_OPTIONS=suppressions=$HOME/.asan.supp
 export ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-3.9/bin/llvm-symbolizer
 export UBSAN_OPTIONS=print_stacktrace=1
-export CTEST_PARALLEL_LEVEL=$(nproc)
+if [[ "$(uname)" == "Darwin" ]]; then
+    export NPROC=$(sysctl -n hw.ncpu)
+else
+    export NPROC=$(nproc)
+fi
+export CTEST_PARALLEL_LEVEL=$NPROC
 
 # Exports: Set QT_MESSAGE_PATTERN
 c=`echo -e "\033"`
