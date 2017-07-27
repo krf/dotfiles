@@ -8,27 +8,22 @@ do
     key="$1"
 
     case $key in
-    -c)
-        CLEAN=1
-        shift
-        ;;
-    -s)
-        SANITIZE=1
-        shift
-        ;;
-    -r)
-        REBASE=1
-        shift
-        ;;
-    *)
-        ;;
+    -a) ALL=1; shift; ;;
+    -c) CLEAN=1; shift; ;;
+    -s) SANITIZE=1; shift; ;;
+    -r) REBASE=1; shift; ;;
+    *) ;;
     esac
-    shift
 done
 
 TOP_SRC="$HOME/devel/src/kf5"
 TOP_BUILD="$HOME/devel/build/kf5"
-KDEVELOP_PROJECTS="kdevelop-pg-qt kdevplatform kdevelop kdev-python kdev-php"
+
+if [[ -n "$ALL" ]]; then
+    KDEVELOP_PROJECTS="$(kdevelop-list-qt5-repos.sh)"
+else
+    KDEVELOP_PROJECTS="$(kdevelop-list-released-repos.sh)"
+fi
 
 set -e
 set -x
@@ -62,7 +57,7 @@ for project in $KDEVELOP_PROJECTS; do
     fi
 
     echo $extraArgs
-    cmake -DCMAKE_INSTALL_PREFIX=$KF5 ${extraArgs[@]} -G Ninja $TOP_SRC/$dir
+    cmake -DCMAKE_INSTALL_PREFIX=$KDEDIR ${extraArgs[@]} -G Ninja $TOP_SRC/$dir
     ninja install
     popd
 done
