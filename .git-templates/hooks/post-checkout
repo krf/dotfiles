@@ -16,6 +16,7 @@ try:
     import git
 except ImportError:
     print("Warning: python-git module not available, can't invoke post-checkout script")
+    sys.exit(0) # exit early
 
 repo = git.Repo(os.getcwd())
 
