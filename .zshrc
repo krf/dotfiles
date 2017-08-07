@@ -65,6 +65,7 @@ alias bt='echo 0 | gdb -batch-silent -ex "run" -ex "set logging overwrite on" -e
 alias psg='ps aux | grep'
 alias notify-done='notify-send -t 3600000 Done'
 #alias ag='ag --hidden -t'
+alias ag='ag --unrestricted'
 alias helgrind="QT_NO_GLIB=1 valgrind --tool=helgrind --track-lockorders=no"
 
 # Alias for pandoc
