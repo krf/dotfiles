@@ -65,7 +65,7 @@ alias bt='echo 0 | gdb -batch-silent -ex "run" -ex "set logging overwrite on" -e
 alias psg='ps aux | grep'
 alias notify-done='notify-send -t 3600000 Done'
 #alias ag='ag --hidden -t'
-alias ag='ag --unrestricted'
+#alias ag='ag --unrestricted'
 alias helgrind="QT_NO_GLIB=1 valgrind --tool=helgrind --track-lockorders=no"
 
 # Alias for pandoc
@@ -110,6 +110,12 @@ function env-devel() {
 }
 
 alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
+
+function configure-qt5() {
+    CONFIGURE=$1
+    shift;
+    $CONFIGURE -developer-build -nomake tests -nomake examples -skip qtquick1 -skip qtwebengine -skip qtlocation -skip qtenginio -skip qtpurchasing -skip qtdocgallery -opensource -confirm-license $*
+}
 
 # History settings
 HISTSIZE=10000 # Set command search history
