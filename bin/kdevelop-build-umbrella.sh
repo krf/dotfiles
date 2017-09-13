@@ -22,7 +22,7 @@ TOP_BUILD="$HOME/devel/build/kf5"
 if [[ -n "$ALL" ]]; then
     KDEVELOP_PROJECTS="$(kdevelop-list-qt5-repos.sh)"
 else
-    KDEVELOP_PROJECTS="$(kdevelop-list-released-repos.sh)"
+    KDEVELOP_PROJECTS="kdevelop-pg-qt $(kdevelop-list-released-repos.sh)"
 fi
 
 set -e
@@ -32,11 +32,16 @@ pushd $TOP_SRC
 
 echo $KDEV_SUFFIX
 for project in $KDEVELOP_PROJECTS; do
+    if [[ "$project" == "kdevplatform" ]] && [[ "$KDEV_TARGET" != "5.1" ]]; then
+        continue
+    fi
+
     dir=${project}${KDEV_SUFFIX}
     git-new-workdir $project $dir || true
 
     pushd $dir
     git checkout $KDEV_TARGET
+
 
     if [[ -n "$REBASE" ]]; then
         git pull --rebase

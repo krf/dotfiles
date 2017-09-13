@@ -6,5 +6,5 @@ echo kdevelop-pg-qt # needs to come first
 sed -nr 's/^.+project identifier=\"(.+)\".+$/\1/p' /home/kfunk/devel/src/kf5/kde_projects.xml \
     | grep kdev \
     | grep -v kdevelop-pg-qt \
-    | grep -Ev "kdev-cppcheck|kdev-qmljs|kdev-clang|kdev-perforce|kdev-qmake|kdev-mercurial|kdev-www" \
+    | grep -Ev "kdev-cppcheck|kdev-qmljs|kdev-clang|kdev-perforce|kdev-qmake|kdev-www" \
     | sort --version-sort

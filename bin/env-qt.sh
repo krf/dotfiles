@@ -34,9 +34,9 @@ function __env-qt_main() {
     echo "Setting environment."
     export QTDIR
     export PATH=$QTDIR/bin:$PATH
-    export QT_PLUGIN_PATH=$QTDIR/plugins
+    export QT_PLUGIN_PATH=$QTDIR/plugins:$QT_PLUGIN_PATH
     export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
-    export QML2_IMPORT_PATH=$QTDIR/qml
+    export QML2_IMPORT_PATH=$QTDIR/qml:$QML2_IMPORT_PATH
     # WTH is this needed???
     export QT_QPA_PLATFORM_PLUGIN_PATH=$QTDIR/plugins/platforms/
     echo "Done."
