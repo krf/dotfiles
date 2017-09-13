@@ -42,6 +42,7 @@ mkdir -p $KDEVARTMP
 
 # Add the KDE plugins to the Qt plugins path
 export QT_PLUGIN_PATH=$KDEDIR/lib/x86_64-linux-gnu/plugins/:$QT_PLUGIN_PATH
+export QML2_IMPORT_PATH=$KDEDIR/lib/x86_64-linux-gnu/qml/:$QT_PLUGIN_PATH
 
 # Export the standard paths to include KDE
 export PATH=$KDEDIR/bin:$PATH
