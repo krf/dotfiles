@@ -25,6 +25,11 @@ else
     KDEVELOP_PROJECTS="kdevelop-pg-qt $(kdevelop-list-released-repos.sh)"
 fi
 
+if [[ -z "$KDEDIR" ]]; then
+    echo "KDEDIR empty, defaulting to $HOME/devel/install/kf5"
+    KDEDIR="$HOME/devel/install/kf5"
+fi
+
 set -e
 set -x
 
@@ -37,8 +42,9 @@ for project in $KDEVELOP_PROJECTS; do
     fi
 
     dir=${project}${KDEV_SUFFIX}
-    git-new-workdir $project $dir || true
+    git-new-workdir $project $dir || git clone git://anongit.kde.org/${project} || true
 
+    mkdir $dir || true
     pushd $dir
     git checkout $KDEV_TARGET
 
