@@ -75,6 +75,7 @@ alias notify-done='notify-send -t 3600000 Done'
 #alias ag='ag --hidden -t'
 #alias ag='ag --unrestricted'
 alias helgrind="QT_NO_GLIB=1 valgrind --tool=helgrind --track-lockorders=no"
+alias arc.patch='arc patch --nobranch'
 
 # Alias for pandoc
 alias pandoc.pdf="pandoc -s -V geometry:margin=1in -V documentclass:article"
