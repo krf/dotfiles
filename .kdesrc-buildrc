@@ -14,7 +14,7 @@ global
     #install-session-driver true
 
     custom-build-command ninja
-    cmake-options -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS=-Wno-inconsistent-missing-override -G "Ninja"
+    cmake-options -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja"
     branch-group kf5-qt5
 
     ignore-kde-structure true
