@@ -102,3 +102,5 @@
 	attributesfile = ~/.gitattributes_global
 [merge "ours"]
 	driver = true
+[am]
+	threeWay = true
