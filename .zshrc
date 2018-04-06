@@ -26,9 +26,9 @@ export QT_MESSAGE_PATTERN_DEFAULT="\
 %{appname}(%{pid})/%{category}: \
 ${c}[31m%{if-debug}${c}[34m%{endif}%{function}(%{line})\
 ${c}[0m: %{message}\
-%{if-warning}%{backtrace depth=20}%{endif}\
-%{if-critical}%{backtrace depth=20}%{endif}\
-%{if-fatal}%{backtrace depth=20}%{endif}\
+%{if-warning} @ %{backtrace depth=20}%{endif}\
+%{if-critical} @ %{backtrace depth=20}%{endif}\
+%{if-fatal} @ %{backtrace depth=20}%{endif}\
 ${c}[0m\
 "
 export QT_MESSAGE_PATTERN_NO_COLOR="%{appname}(%{pid})/%{category}: %{if-debug}%{endif}%{function}(%{line}): %{message}"
@@ -76,6 +76,7 @@ alias notify-done='notify-send -t 3600000 Done'
 #alias ag='ag --unrestricted'
 alias helgrind="QT_NO_GLIB=1 valgrind --tool=helgrind --track-lockorders=no"
 alias arc.patch='arc patch --nobranch'
+alias sprunge="curl -F 'sprunge=<-' http://sprunge.us"
 
 # Alias for pandoc
 alias pandoc.pdf="pandoc -s -V geometry:margin=1in -V documentclass:article"

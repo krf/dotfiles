@@ -82,6 +82,11 @@
 [url "git@github.com:"]
 	pushInsteadOf = "github:"
 	pushInsteadOf = "git://github.com/"
+[url "https://gitlab.com/"]
+	insteadOf = "gitlab:"
+[url "git@gitlab.com:"]
+	pushInsteadOf = "gitlab:"
+	pushInsteadOf = "https://gitlab.com/"
 [url "git@gitorious.org:"]
 	pushInsteadOf = git://gitorious.org/
 [url "ssh://krf@codereview.qt-project.org:29418/"]
@@ -104,3 +109,8 @@
 	driver = true
 [am]
 	threeWay = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
