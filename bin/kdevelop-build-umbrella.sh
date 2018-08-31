@@ -24,10 +24,10 @@ if [[ -n "$ALL" ]]; then
 else
     KDEVELOP_PROJECTS="kdevelop-pg-qt $(kdevelop-list-released-repos.sh)"
 fi
-KDEVELOP_PROJECTS="${KDEVELOP_PROJECTS//$'\n'/ }" 
+KDEVELOP_PROJECTS="${KDEVELOP_PROJECTS//$'\n'/ }"
 
-if [[ -n "$KDEVELOP_EXTRA_PROJECTS" ]]; then
-    KDEVELOP_PROJECTS="$KDEVELOP_PROJECTS $KDEVELOP_EXTRA_PROJECTS"
+if [[ -n "$KDEV_EXTRA_PROJECTS" ]]; then
+    KDEVELOP_PROJECTS="$KDEVELOP_PROJECTS $KDEV_EXTRA_PROJECTS"
 fi
 
 echo "Building projects: $KDEVELOP_PROJECTS"
