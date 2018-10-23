@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if [ ! -e "build.ninja" ]; then
+    echo "No build.ninja in current directory, exiting"
+    exit 1
+fi
+
+sudo ninja install
+# after this, some files in the build dir may be owner by root
+# cf. https://github.com/ninja-build/ninja/issues/1302
+
+# fix this up
+UID="$(id -u)"
+GID="$(id -g)"
+sudo chown $UID:$GID -Rv .
