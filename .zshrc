@@ -10,8 +10,9 @@ export VALGRIND_OPTS="\
     --suppressions=$HOME/.valgrind/default.supp \
     --suppressions=$HOME/.valgrind/other.supp \
     --suppressions=$HOME/.valgrind/generated.supp"
-export ASAN_OPTIONS=suppressions=$HOME/.asan.supp
-export ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-3.9/bin/llvm-symbolizer
+# new_delete_type_mismatch=0 b/c of hit of said check in e.g. QQmlType::create(...)
+export ASAN_OPTIONS=suppressions=$HOME/.asan.supp,new_delete_type_mismatch=0
+export ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-7/bin/llvm-symbolizer
 export UBSAN_OPTIONS=print_stacktrace=1
 if [[ "$(uname)" == "Darwin" ]]; then
     export NPROC=$(sysctl -n hw.ncpu)
@@ -48,6 +49,7 @@ alias pu=pushd
 alias po=popd
 alias d='dirs -v'
 alias ducks='du -cks * | sort -rn | head'
+alias find-biggest-files-and-dirs='du -a . | sort -n -r | head -n 20'
 alias h=history
 alias help=run-help
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias grep='grep --color=auto'; fi
@@ -124,7 +126,7 @@ alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
 function configure-qt5() {
     CONFIGURE=$1
     shift;
-    $CONFIGURE -developer-build -nomake tests -nomake examples -skip qtquick1 -skip qtwebengine -skip qtlocation -skip qtenginio -skip qtpurchasing -skip qtdocgallery -opensource -confirm-license $*
+    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtquick1 -skip qtwebengine -skip qtlocation -skip qtenginio -skip qtpurchasing -skip qtdocgallery -opensource -confirm-license $*
 }
 
 # History settings

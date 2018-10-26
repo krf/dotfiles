@@ -2,7 +2,8 @@
 
 global
 
-    qtdir /usr
+#    qtdir /usr
+    qtdir /home/kfunk/devel/build/qt5.11/qtbase
     source-dir /home/kfunk/devel/src/kf5
     build-dir /home/kfunk/devel/build/kf5
     kdedir /home/kfunk/devel/install/kf5
