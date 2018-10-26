@@ -12,4 +12,8 @@ sudo ninja install
 # fix this up
 UID="$(id -u)"
 GID="$(id -g)"
-sudo chown $UID:$GID -Rv .
+
+echo
+echo "Fixing permissions of files in build folder..."
+sudo chown $UID:$GID . -R
+echo "Done."
