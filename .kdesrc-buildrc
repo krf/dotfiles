@@ -10,7 +10,7 @@ global
 
     git-repository-base kde-projects kde:
 
-    cxxflags -pipe -DQT_STRICT_ITERATORS -DQURL_NO_CAST_FROM_STRING -DQT_NO_HTTP -DQT_NO_FTP -Wformat -Werror=format-security -Werror=return-type -Wno-variadic-macros
+    cxxflags -pipe -DQT_STRICT_ITERATORS -DQURL_NO_CAST_FROM_STRING -Wformat -Werror=format-security -Werror=return-type -Wno-variadic-macros
 
     #install-session-driver true
 
