@@ -9,6 +9,7 @@ do
 
     case $key in
     -a) ALL=1; shift; ;;
+    -d) DEBUG=1; shift; ;;
     -c) CLEAN=1; shift; ;;
     -s) SANITIZE=1; shift; ;;
     -r) REBASE=1; shift; ;;
@@ -72,6 +73,9 @@ for project in $KDEVELOP_PROJECTS; do
     extraArgs=""
     if [[ -n "$SANITIZE" ]]; then
         extraArgs=(-DECM_ENABLE_SANITIZERS="address" -DCMAKE_CXX_FLAGS="-fsanitize=address -fsanitize-memory-track-origins -fsanitize=leak -fsanitize=undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-sanitize=alignment")
+    fi
+    if [[ -n "$DEBUG" ]]; then
+        extraArgs+=('-DCMAKE_BUILD_TYPE=Debug')
     fi
 
     echo $extraArgs
