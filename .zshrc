@@ -126,7 +126,7 @@ alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
 function configure-qt5() {
     CONFIGURE=$1
     shift;
-    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtquick1 -skip qtwebengine -skip qtlocation -skip qtenginio -skip qtpurchasing -skip qtdocgallery -opensource -confirm-license $*
+    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtwebengine -skip qtlocation -skip qtpurchasing -skip qtdocgallery -opensource -confirm-license $*
 }
 
 # History settings
