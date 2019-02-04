@@ -47,6 +47,7 @@
 	l-nograph = log --pretty=format:'%h -%d %s (%cr) <%an>' --abbrev-commit --date=relative
 	lo = log -u --stat
 	r = pull --rebase
+	rr = pull --rebase --recurse-submodules
 	s = status -uno
 	up = !git fetch --all && git stash && git pull --rebase && git stash pop
 
