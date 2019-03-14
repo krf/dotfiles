@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2019 Kevin Funk <kevin.funk@kdab.com
+# Copyright (C) 2019 Kevin Funk <kevin.funk@kdab.com>
 #
 # Converts a SugarCRM Contacts.csv file to Zoiper's Contacts.xml format
 
