@@ -11,6 +11,7 @@ do
     -a) ALL=1; shift; ;;
     -d) DEBUG=1; shift; ;;
     -c) CLEAN=1; shift; ;;
+    -h) HELP=1; shift; ;;
     -s) SANITIZE=1; shift; ;;
     -r) REBASE=1; shift; ;;
     *) ;;
@@ -19,6 +20,11 @@ done
 
 TOP_SRC="$HOME/devel/src/kf5"
 TOP_BUILD="$HOME/devel/build/kf5"
+
+if [[ -n "$HELP" ]]; then
+    echo "Usage: kdevelop: -a ALL, -d DEBUG, -c CLEAN, -h HELP, -s SANITIZE, -r REBASE"
+    exit 1
+fi
 
 if [[ -n "$ALL" ]]; then
     KDEVELOP_PROJECTS="$(kdevelop-list-qt5-repos.sh)"

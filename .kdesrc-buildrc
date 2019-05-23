@@ -3,7 +3,7 @@
 global
 
 #    qtdir /usr
-    qtdir /home/kfunk/devel/build/qt5.11/qtbase
+    qtdir /home/kfunk/devel/build/qt5.12/qtbase
     source-dir /home/kfunk/devel/src/kf5
     build-dir /home/kfunk/devel/build/kf5
     kdedir /home/kfunk/devel/install/kf5
@@ -15,7 +15,7 @@ global
     #install-session-driver true
 
     custom-build-command ninja
-    cmake-options -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja"
+    cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS" -DCMAKE_C_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja"
     branch-group kf5-qt5
 
     ignore-kde-structure true

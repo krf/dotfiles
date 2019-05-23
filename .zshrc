@@ -35,16 +35,18 @@ ${c}[0m\
 export QT_MESSAGE_PATTERN_NO_COLOR="%{appname}(%{pid})/%{category}: %{if-debug}%{endif}%{function}(%{line}): %{message}"
 export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/%{category}: ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
 unset c
-export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_DEFAULT"
+export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_WITH_TIMING"
 export QT_LOGGING_CONF="$HOME/.qtlogging.ini"
 
 # Aliases (shortcuts)
+alias cmake='cmake -G Ninja'
 alias chmox="chmod +x"
 alias cp='nocorrect cp' # ~ on cp
 alias dmesg='dmesg -T'
 alias mv='nocorrect mv' # no spelling correction on mv
 test -x /usr/bin/most && alias man='man -P most'
 alias mkdir='nocorrect mkdir' # ~ on on mkdir
+alias n='nice ionice -c 3'
 alias pu=pushd
 alias po=popd
 alias d='dirs -v'
@@ -164,11 +166,6 @@ bindkey "\e[F" end-of-line
 bindkey '^i' expand-or-complete-prefix
 ##
 
-# Private sources
-if [ -f "$HOME/.zshrc-private" ]; then
-    source ~/.zshrc-private
-fi
-
 # Other sources
 if [ -f "/etc/zsh_command_not_found" ]; then
     source /etc/zsh_command_not_found
@@ -204,6 +201,10 @@ colors
 autoload -U promptinit
 promptinit
 setopt promptsubst
+
+# Be able to load Bash completion files
+autoload -U bashcompinit
+bashcompinit
 
 # Set prompt
 local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
@@ -286,3 +287,8 @@ fi
 export PATH="$HOME/.linuxbrew/bin:$PATH"
 export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
 export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
+
+# Private sources
+if [ -f "$HOME/.zshrc-private" ]; then
+    source ~/.zshrc-private
+fi

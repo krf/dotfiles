@@ -4,18 +4,6 @@
 	email = kfunk@kde.org
 	name = Kevin Funk
 
-[pull]
-	rebase = true
-
-[push]
-	default = current
-
-[color]
-	ui = true
-
-[apply]
-	whitespace = fix
-
 [diff "docx"]
 	binary = true
 	textconv = ~/bin/docx2txt-for-git.sh
@@ -70,8 +58,10 @@
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
 # URL rewrites
-[url "git://anongit.kde.org/"]
-	insteadOf = kde:
+[url "git@invent.kde.org:kde/"]
+	insteadOf = kdeinvent:
+[url "git@invent.kde.org:"]
+	insteadOf = kdei:
 [url "ssh://git@git.kde.org/"]
 	pushInsteadOf = kde:
 	pushInsteadOf = git://anongit.kde.org/
@@ -101,7 +91,7 @@
 	path = ~/.gitconfig-private
 
 [rerere]
-	enabled = true
+	enabled = false
 [init]
 	templatedir = ~/.git-templates
 [core]
@@ -115,3 +105,5 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+[url "https://anongit.kde.org/"]
+	insteadOf = kde:
