@@ -33,10 +33,18 @@ ${c}[0m: %{message}\
 ${c}[0m\
 "
 export QT_MESSAGE_PATTERN_NO_COLOR="%{appname}(%{pid})/%{category}: %{if-debug}%{endif}%{function}(%{line}): %{message}"
-export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time yyyyMMdd h:mm:ss.zzz t}] %{appname}(%{pid})/%{category}: ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
+export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time h:mm:ss.zzz}] %{appname}(%{pid})/%{category}: ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
 unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_WITH_TIMING"
 export QT_LOGGING_CONF="$HOME/.qtlogging.ini"
+
+# Environment variables
+# linuxbrew
+export PATH="$HOME/.linuxbrew/bin:$PATH"
+export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
+export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
+# Snap
+export PATH=$PATH:/snap/bin
 
 # Aliases (shortcuts)
 alias cmake='cmake -G Ninja'
@@ -59,6 +67,9 @@ alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
 test -x /usr/share/vim/vim74/macros/less.sh && alias less='/usr/share/vim/vim74/macros/less.sh'
 alias ll='ls -l'
+if hash lsd 2> /dev/null; then
+    alias ll='lsd -l'
+fi
 alias la='ls -al'
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=auto'; fi
 alias netcat='nc'
@@ -281,12 +292,6 @@ cd $PWD
 if hash thefuck 2> /dev/null; then
     eval "$(thefuck --alias)"
 fi
-
-# linuxbrew
-
-export PATH="$HOME/.linuxbrew/bin:$PATH"
-export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
-export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
 
 # Private sources
 if [ -f "$HOME/.zshrc-private" ]; then
