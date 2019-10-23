@@ -21,6 +21,9 @@ else
 fi
 export CTEST_PARALLEL_LEVEL=$NPROC
 
+# Exports: Enable GCC output colorization (cf. https://reversed.top/2015-10-25/enable-colorization-of-gcc-output/)
+export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
 # Exports: Set QT_MESSAGE_PATTERN
 c=`echo -e "\033"`
 export QT_MESSAGE_PATTERN_DEFAULT="\
@@ -37,6 +40,7 @@ export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time h:mm:ss.zzz}] %{appname}(%{pid})/
 unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_WITH_TIMING"
 export QT_LOGGING_CONF="$HOME/.qtlogging.ini"
+export QT_FATAL_WARNINGS=0 # for auto-completion, disabled by default
 
 # Environment variables
 # linuxbrew
@@ -67,9 +71,9 @@ alias igrep='grep -i'
 test -x /usr/share/vim/vimcurrent/macros/less.sh && alias less='/usr/share/vim/vimcurrent/macros/less.sh'
 test -x /usr/share/vim/vim74/macros/less.sh && alias less='/usr/share/vim/vim74/macros/less.sh'
 alias ll='ls -l'
-if hash lsd 2> /dev/null; then
-    alias ll='lsd -l'
-fi
+#if hash lsd 2> /dev/null; then
+#    alias ll='lsd -l'
+#fi
 alias la='ls -al'
 if [ "$HAVE_BUSYBOX" = "0" ]; then alias ls='ls --color=auto'; fi
 alias netcat='nc'
@@ -101,7 +105,8 @@ if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
 # Aliases (convenience)
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
-alias whatismyip="curl ipinfo.io/ip"
+alias whatismyip='dig @resolver1.opendns.com A myip.opendns.com +short -4'
+alias whatismyip6='dig @resolver1.opendns.com AAAA myip.opendns.com +short -6'
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"
 
 # Aliases (Vim)
