@@ -22,6 +22,7 @@
 [alias]
 	b = checkout -b
 	c = checkout
+	ct = checkout --track
 	coam = commit --amend
 	coup = commit --amend --no-edit
 	d = diff --exit-code
