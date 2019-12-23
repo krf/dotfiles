@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# Copy the dotfiles contents into the $HOME folder
+
+cd "$(dirname "$0")"
+
+set -x
+
+FILES=$(ls -A | grep -v .git | grep -v dotfiles-init)
+cp -R $FILES $HOME
