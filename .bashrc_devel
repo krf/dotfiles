@@ -18,7 +18,9 @@ export OBJ_REPLACEMENT="s#$KDE_SRC#$KDE_BUILD#"
 # If you don't have makeobj, install the package named kdesdk-scripts or
 # kdesdk, or check out kdesdk/scripts from svn, or just don't set the alias
 # yet.
-alias make=makeobj
+if hash makeobj 2> /dev/null; then
+    alias make=makeobj
+fi
 
 ##
 # A function to easily build the current directory of KDE.
