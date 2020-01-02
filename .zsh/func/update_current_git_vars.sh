@@ -20,7 +20,7 @@ if [[ -n "$diff_files" ]]; then
     __CURRENT_GIT_BRANCH_IS_DIRTY='1'
 fi
 
-__CURRENT_GIT_TAG="$(git describe 2>/dev/null | sed -e 's/-[^-]*$//' )"
+__CURRENT_GIT_TAG="$(git describe 2>/dev/null)"
 
 local branch="$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')"
 if [[ -z "$branch" || "$branch" == "(no branch)" ]]; then
