@@ -12,7 +12,6 @@ export VALGRIND_OPTS="\
     --suppressions=$HOME/.valgrind/generated.supp"
 # new_delete_type_mismatch=0 b/c of hit of said check in e.g. QQmlType::create(...)
 export ASAN_OPTIONS=suppressions=$HOME/.asan.supp,new_delete_type_mismatch=0
-export ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-7/bin/llvm-symbolizer
 export UBSAN_OPTIONS=print_stacktrace=1
 if [[ "$(uname)" == "Darwin" ]]; then
     export NPROC=$(sysctl -n hw.ncpu)
@@ -116,6 +115,7 @@ alias ctags-c++='ctags -R --c++-kinds=+p --fields=+iaS --extra=+q'
 alias valgrind-callgrind='valgrind --tool=callgrind --fn-skip="QMetaObject::activate*" --fn-skip="QMetaObject::metacall*" --fn-skip="*::qt_metacall*" --fn-skip="*::qt_static_metacall*"'
 
 # Alias for quickly compiling Qt-related source file
+alias clang++-qt5='g++ -fPIC -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -lQt5Core'
 alias g++-qt5='g++ -fPIC -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -lQt5Core'
 
 # Alias (perf)
@@ -128,6 +128,12 @@ alias perf.report='perf report -g graph --no-children'
 function mkcd() {
     [ -n "$1" ] && mkdir -p "$@" && cd "$1";
 }
+
+# NAME: top_by-Process_name - Run top but filter by process name ($1)
+function top_by_process_name() {
+    top -c -p $(pgrep -d',' -f $1)
+}
+
 
 # Functions (development)
 # NAME: env-devel - Set up development environment
@@ -144,7 +150,7 @@ alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
 function configure-qt5() {
     CONFIGURE=$1
     shift;
-    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtwebengine -skip qtlocation -skip qtpurchasing -skip qtdocgallery -opensource -confirm-license $*
+    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtwebengine -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license $*
 }
 
 # History settings
