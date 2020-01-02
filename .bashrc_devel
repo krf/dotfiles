@@ -14,6 +14,13 @@ export QTEST_COLORED=1
 # Tell many scripts how to switch from source dir to build dir:
 export OBJ_REPLACEMENT="s#$KDE_SRC#$KDE_BUILD#"
 
+# Set up make
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+    export MAKEFLAGS=-j$(cat /proc/cpuinfo | grep processor | wc -l) $MAKEFLAGS
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    export MAKEFLAGS=-j$(sysctl -n hw.ncpu) $MAKEFLAGS
+fi
+
 # Use makeobj instead of make, to automatically switch to the build dir.
 # If you don't have makeobj, install the package named kdesdk-scripts or
 # kdesdk, or check out kdesdk/scripts from svn, or just don't set the alias

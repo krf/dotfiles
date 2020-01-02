@@ -6,9 +6,6 @@
 # The default values provided are for a master/trunk/unstable build in your own
 # user directory using your system Qt
 
-# Set up make
-export MAKEFLAGS=-j$(cat /proc/cpuinfo | grep processor | wc -l) $MAKEFLAGS
-
 # Uncomment if building on a 64 bit system
 #export LIB_SUFFIX=64
 
