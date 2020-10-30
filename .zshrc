@@ -24,10 +24,14 @@ export CTEST_PARALLEL_LEVEL=$NPROC
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 # Exports: Set QT_MESSAGE_PATTERN
+# Note: For info about colors: https://misc.flogisoft.com/bash/tip_colors_and_formatting#colors
 c=`echo -e "\033"`
 export QT_MESSAGE_PATTERN_DEFAULT="\
 %{appname}(%{pid})/%{category}: \
-${c}[31m%{if-debug}${c}[34m%{endif}%{function}(%{line})\
+${c}[31m\
+%{if-info}${c}[94m%{endif}\
+%{if-debug}${c}[34m%{endif}\
+%{function}(%{line})\
 ${c}[0m: %{message}\
 %{if-warning} @ %{backtrace depth=20}%{endif}\
 %{if-critical} @ %{backtrace depth=20}%{endif}\
@@ -35,7 +39,7 @@ ${c}[0m: %{message}\
 ${c}[0m\
 "
 export QT_MESSAGE_PATTERN_NO_COLOR="%{appname}(%{pid})/%{category}: %{if-debug}%{endif}%{function}(%{line}): %{message}"
-export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time h:mm:ss.zzz}] %{appname}(%{pid})/%{category}: ${c}[31m%{if-debug}${c}[34m%{endif}%{function}${c}[0m: %{message}"
+export QT_MESSAGE_PATTERN_WITH_TIMING="[%{time h:mm:ss.zzz}] ${QT_MESSAGE_PATTERN_DEFAULT}"
 unset c
 export QT_MESSAGE_PATTERN="$QT_MESSAGE_PATTERN_WITH_TIMING"
 export QT_LOGGING_CONF="$HOME/.qtlogging.ini"
@@ -53,7 +57,6 @@ export PATH=$PATH:/snap/bin
 alias cmake='cmake -G Ninja'
 alias chmox="chmod +x"
 alias cp='nocorrect cp' # ~ on cp
-alias dmesg='dmesg -T'
 alias mv='nocorrect mv' # no spelling correction on mv
 test -x /usr/bin/most && alias man='man -P most'
 alias mkdir='nocorrect mkdir' # ~ on on mkdir
@@ -95,7 +98,7 @@ alias notify-done='notify-send -t 3600000 Done'
 alias helgrind="QT_NO_GLIB=1 valgrind --tool=helgrind --track-lockorders=no"
 alias arc.patch='arc patch --nobranch'
 alias sprunge="curl -F 'sprunge=<-' http://sprunge.us"
-
+alias turbostat='sudo turbostat --hide "C1,C1E,C3,C6,C7s,C8,C9,C10,POLL%,CPU%c1,CPU%c3,CPU%c6,CPU%c7,CoreTmp,PkgTmp,GFX%rc6,GFXMHz,Totl%C0,Any%C0,GFX%C0,CPUGFX%,Pkg%pc2,Pkg%pc3,Pkg%pc6,Pkg%pc7,Pkg%pc8,Pkg%pc9,Pk%pc10,PkgWatt,CorWatt,GFXWatt,RAMWatt,PKG_%,RAM_%"' # turbostat really shows way too much info by default...
 # Alias for pandoc
 alias pandoc.pdf="pandoc -s -V geometry:margin=1in -V documentclass:article"
 
@@ -104,6 +107,7 @@ if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
 # Aliases (convenience)
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
+alias pwgen='pwgen -B -y'
 alias whatismyip='dig @resolver1.opendns.com A myip.opendns.com +short -4'
 alias whatismyip6='dig @resolver1.opendns.com AAAA myip.opendns.com +short -6'
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"
@@ -150,7 +154,7 @@ alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
 function configure-qt5() {
     CONFIGURE=$1
     shift;
-    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtwebengine -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license $*
+    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtwebengine -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license -system-webengine-icu -no-webengine-ffmpeg -system-webengine-webp $*
 }
 
 # History settings
