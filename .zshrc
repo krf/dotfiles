@@ -224,9 +224,10 @@ setopt share_history
 # Configure prompt
 autoload colors zsh/terminfo
 colors
-autoload -U promptinit
+autoload -U compinit promptinit
 promptinit
 setopt promptsubst
+compinit
 
 # Be able to load Bash completion files
 autoload -U bashcompinit
