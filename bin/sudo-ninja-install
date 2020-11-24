@@ -5,6 +5,7 @@ if [ ! -e "build.ninja" ]; then
     exit 1
 fi
 
+ninja
 sudo ninja install
 # after this, some files in the build dir may be owner by root
 # cf. https://github.com/ninja-build/ninja/issues/1302

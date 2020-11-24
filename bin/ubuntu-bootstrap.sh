@@ -1,13 +1,15 @@
 #!/bin/sh
 
-sudo apt-get install -y ack-grep acpi apt-file automake bzr build-essential ccache clang-3.5 cgdb colordiff deborphan filelight gimp git git-svn gscan2pdf htop imagemagick inxi kdesdk-scripts kdiff3 kolourpaint4 libnofify-bin linux-tools-common mercurial mesa-utils nethogs ninja-build nmap odt2txt pandoc pastebinit pax-utils powertop python-rbtools qt5-doc sloccount texlive-latex-base texlive-fonts-recommended valgrind vim wajig wdiff whois zsh `# CLI` \
-    chromium-browser filelight gparted kde-baseapps-bin kleopatra quassel-client pidgin pidgin-plugin-pack virtualbox vlc yakuake zim `# GUI` \
+set -e
+
+sudo apt-get install -y ack silversearcher-ag acpi apt-file automake bzr build-essential ccache cgdb colordiff deborphan git git-svn gscan2pdf htop imagemagick inxi kdesdk-scripts libnotify-bin lm-sensors linux-tools-common linux-tools-generic mercurial mesa-utils nethogs nmap odt2txt openconnect pandoc pastebinit pax-utils powertop qt5-doc sloccount sshuttle texlive-latex-base texlive-fonts-recommended unp unrar valgrind vim wajig wdiff whois zsh `# CLI` \
+    chromium-browser filelight gimp gparted kdiff3 kleopatra kmail kolourpaint korganizer quassel-client pidgin pidgin-plugin-pack virtualbox virtualbox-qt vlc yakuake zim `# GUI` \
+    bison clang cmake lld flex g++ ninja-build qmlscene qt5-qmake `# building` \
     gperf `# for Qt5 webkit` \
     libdouble-conversion-dev libpcre2-dev `# for Qt5` \
     libreoffice-kde hunspell-de-de `# for libreoffice` \
     libgetopt-euclid-perl `# for git-blame-stats` \
     libjson-perl libxml-parser-perl `# for kdesrc-build` \
-    libboost-dev `# for kdevelop` \
+    libboost-dev libdrm-dev libgif-dev libgl-dev libical-dev libegl-dev libfam-dev libphonenumber-dev libxml2-dev libxslt-dev libsm-dev libssl-dev `# for Qt/KDE projects` \
 
-sudo apt-get build-dep -y kdelibs5-dev qt5-default
-sudo pip install thefuck
+sudo apt-get build-dep -y kdevelop kmail kwin korganizer qt5-default

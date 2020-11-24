@@ -19,7 +19,9 @@ fi
 
 # Set up which Qt to use
 # Use the system Qt, adjust path as required
-export QTDIR=/usr
+if [ -z "$QTDIR" ]; then
+    export QTDIR=/usr
+fi
 # Uncomment to use your own build of qt-kde
 #export QTDIR=$BASEDIR/inst/master/qt-kde
 #export PATH=$QTDIR/bin:$PATH
@@ -56,6 +58,11 @@ export CMAKE_INCLUDE_PATH=$KDEDIR/include:$CMAKE_INCLUDE_PATH
 # If unset then you must install shared-mime-info
 #unset XDG_DATA_DIRS
 #unset XDG_CONFIG_DIRS
+
+# Similar to https://doc.qt.io/qt-5/qstandardpaths.html#setTestModeEnabled, use a separate set of share/cache/config dirs to not mess with original data
+#export XDG_DATA_HOME=$HOME/.local-$BUILDNAME
+#export XDG_CACHE_HOME=$HOME/.cache-$BUILDNAME
+#export XDG_CONFIG_HOME=$HOME/.config-$BUILDNAME
 
 export XDG_DATA_DIRS=$KDEDIR/share:$XDG_DATA_DIRS
 

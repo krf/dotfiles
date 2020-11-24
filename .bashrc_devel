@@ -53,7 +53,7 @@ function cmakekde {
           -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS" -DCMAKE_C_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS"
 #          -DCMAKE_BUILD_TYPE=Debug $*
 
-    make $MAKEFLAGS install
+    make install
     RETURN=$?
     cs
     return ${RETURN}
@@ -72,7 +72,7 @@ function qmakekde {
     qmake "$srcFolder" \
         CONFIG-=release CONFIG+=debug \
         PREFIX=$KDEDIR $*
-    make $MAKEFLAGS install
+    make install
     RETURN=$?
     cs
     return ${RETURN}

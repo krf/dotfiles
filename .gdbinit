@@ -8,3 +8,5 @@
 set multiple-symbols ask
 set disassembly-flavor intel
 set unwindonsignal on
+# no need to run gdb-add-index manually anymore with this
+set index-cache on

@@ -7,9 +7,9 @@ export HAVE_BUSYBOX=$( (cat --help  | grep -qv BusyBox) >/dev/null 2>&1; echo $?
 
 # Exports (development)
 export VALGRIND_OPTS="\
-    --suppressions=$HOME/.valgrind/default.supp \
-    --suppressions=$HOME/.valgrind/other.supp \
-    --suppressions=$HOME/.valgrind/generated.supp"
+--suppressions=$HOME/.valgrind/default.supp \
+--suppressions=$HOME/.valgrind/other.supp \
+--suppressions=$HOME/.valgrind/generated.supp"
 # new_delete_type_mismatch=0 b/c of hit of said check in e.g. QQmlType::create(...)
 export ASAN_OPTIONS=suppressions=$HOME/.asan.supp,new_delete_type_mismatch=0
 export UBSAN_OPTIONS=print_stacktrace=1
