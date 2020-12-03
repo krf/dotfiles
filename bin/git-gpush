@@ -1,21 +1,32 @@
 #!/usr/bin/perl
-# Copyright (C) 2015 The Qt Company Ltd.
+# Copyright (C) 2017 The Qt Company Ltd.
+# Copyright (C) 2014 Intel Corporation.
+# Copyright (C) 2019 Oswald Buddenhagen
 # Contact: http://www.qt.io/licensing/
 #
 # You may use this file under the terms of the 3-clause BSD license.
 # See the file LICENSE from this package for details.
 #
 
+use v5.14;
 use strict;
 use warnings;
-no warnings qw(io);
 
-use Carp;
-$SIG{__WARN__} = \&Carp::cluck;
+our ($script, $script_path);
+BEGIN {
+    use Cwd qw(abs_path);
+    if ($^O eq "msys") {
+        $0 =~ s,\\,/,g;
+        $0 =~ s,^(.):/,/$1/,g;
+    }
+    $script_path = $script = abs_path($0);
+    $script_path =~ s,/[^/]+$,,;
+    unshift @INC, $script_path;
+}
+use git_gpush;
 
-use File::Spec;
-use File::Basename;
-use IPC::Open3 qw(open3);
+use List::Util qw(first any all);
+use JSON;
 
 # Cannot use Pod::Usage for this file, since git on Windows will invoke its own perl version, which
 # may not (msysgit for example) support this module, even if it's considered a Core module.
@@ -23,52 +34,168 @@ sub usage
 {
     print << "EOM";
 Usage:
-    git gpush [opts] [[sha1/ref-from]:[ref-to]] [+<reviewer>] [=<CC user>] [-- <push opts>]
+    git gpush [opts] [from] [+<reviewer>] [=<CC user>]
 
     Pushes Changes to Gerrit and adds reviewers and CC to the PatchSets.
 
 Description:
-    This script is used to push PatchSets to Gerrit, and at the same
+    This program is used to push PatchSets to Gerrit, and at the same
     time add reviewers and CCs to the PatchSets pushed.
 
-    You can use email addresses, Gerrit usernames or aliases for the
+    You can use email addresses, Gerrit usernames, or aliases for the
     name of the reviewers/CCs.
 
-    If no sha1 or ref-from is specified, 'HEAD' is used.
-    Note that git gpush can be used in the middle of an interactive
-    rebase, in which case ref-from can often be omitted.
+    The pushed commits are listed by default. Conforming with Gerrit,
+    these are the commits which are not on any branch of the pushed
+    branch's upstream remote.
 
-    If no ref-to is specified, the remote tracking branch for 'ref-from'
-    is used as
-        'refs/for/<remote tracking branch>'.
+    Prior to actually pushing any commits, gpush will temporarily rebase
+    them onto a new base. This has the advantage that you can keep many
+    unrelated "series" in your local branch without creating spurious
+    dependencies on Gerrit, effectively pretending that you have a separate
+    branch for every series. Furthermore, gpush will keep the base of
+    subsequent pushes of the same series constant (unless told otherwise),
+    which means that you can closely track the upstream branch without
+    pushing needless rebases to Gerrit (which would obfuscate inter-PatchSet
+    diffs).
 
-    If no remote is specified or configured, 'gerrit' is used. You may
-    configure a remote like this:
-        git config gpush.remote <remote name>
+    'From' may be specified as either a ref, a SHA1, or a Gerrit Change-Id,
+    possibly abbreviated. Git rev-spec suffixes like '~2' are allowed; if
+    only a suffix is specified, it is understood to be relative to 'HEAD'.
+    'From' may also be a range, specified as either <base>..<tip> or
+    <tip>:<count>. Both <base> and <tip> may be omitted, in which case
+    they default to '\@{upstream}' and 'HEAD', respectively.
+    If 'from' is not specified, 'HEAD' is used.
 
-    If all the options above have been populated, the remainder
-    options are passed on directly to the normal 'git push' command.
-    If you want to avoid specifying all options first, any options
-    specified after a '--' are also passed on directly to the
-    underlying 'git push' command.
+    When pushing a series for the first time, the exact range of commits
+    needs to be specified. For subsequent pushes of the same series, it is
+    sufficient to specify any commit which is part of the series. Loose
+    Changes in the middle of the series will be automatically captured
+    by it; to append loose Changes to the series right in front of them,
+    use --extend; to capture loose Changes right in front of the series,
+    use --capture.
+    It is possible to regroup series any time by specifying new exact
+    ranges. The --group option can be used to (re-)group series without
+    actually pushing them at that time.
+
+    Note that this program can be used in the middle of an interactive
+    rebase, to push out the amended commits instantly.
 
 Options:
-    -d, --draft
-        Mark the pushed Changes as drafts. This switch is usually
-        unnecessary, as gpush will recognize WIP Changes by subject.
+    -a, --all
+        Push all series reachable from 'from'. Error out if any
+        free-standing loose commits are encountered.
 
-    -p, --publish
-        Do not mark the pushed Changes as drafts even if they have
-        WIP markers.
+    -e, --extend
+        Append new Changes to the series right in front of them.
+
+    -c, --capture
+        Make the series capture loose Changes right in front of it.
+
+    -g, --group
+        Group Changes into series without pushing them yet.
+        Note that this resets the pending properties (branch, topic,
+        and base) from a previous grouping that was not pushed out yet.
+
+    -x, --exclude
+        Like --group, but the series is excluded from --all. It is
+        possible to exclude existing series. To (re-)include a series,
+        use --group or push it separately.
+
+    -m, --minimal
+        Try to avoid creating new PatchSets for unmodified Changes even
+        if they are on top of modified Changes. This avoids unnecessarily
+        invalidating reviews, at the cost of slower pushes and the Changes
+        having dependencies marked as "Not current" in the relation chain.
+        This is the default, unless configured otherwise via gpush.minimal.
+
+    -nm, --not-minimal
+        Push the entire series, including trailing unmodified Changes.
+
+    -f, --force
+        Push despite newer PatchSets being on Gerrit.
 
     -r, --remote
-        Specify the git remote to push to. The default is 'gerrit'.
+        Specify the git remote to push to.
+
+    -b, --branch
+        Specify the git branch to push for. If not specified, 'from's
+        upstream branch is used as the target branch.
+        This setting persists for the series, even when it grows.
+
+    -fb, --force-branch
+        Push for specified branch despite the pushed Changes having
+        been pushed previously, but only for different branches.
+
+    -t, --topic
+        Specify the Gerrit topic name for the pushed Changes.
+        This setting persists for the series, even when it grows.
+
+    -o, --onto, --base
+        Specify the commit to rebase the pushed series onto. It is possible
+        to specify arbitrary other commits already known to Gerrit, including
+        still pending PatchSets. Use 'ROOT' to orphan the series.
+        Except for merge commits and their children, once chosen, the base
+        will persist through subsequent pushes until overridden, even when
+        the series grows.
+        By default, the local branch's base is used.
+
+    --rebase
+        Reset the base of a previously pushed series to the local branch's
+        base. Typically used after a conflicted pull.
+
+    --move {new|<range>}[/<from>]
+        After cherry-picking Changes to the current branch, mark the picks
+        as the _only_ source for subsequent pushes of these Changes.
+        The Changes on the current branch inherit all persistent properties,
+        while those on the source branch are hidden, in case they were not
+        dropped to start with.
+        <from> must be supplied only if the source branch is ambiguous.
+        This option is necessary only when a move cannot be unambiguously
+        inferred.
+
+    --copy {new|<range>}
+        After cherry-picking Changes to the current branch, mark the picks
+        as an _additional_ source for subsequent pushes of these Changes.
+        The Changes on the source branch are left alone, while those on the
+        current branch start out with a clean slate (which implies a
+        different default target branch).
+        When a range is specified, the Changes are also --group'd.
+
+    --hide {new|<range>}
+        After cherry-picking Changes to the current branch, mark the picks
+        as an _unacceptable_ source for subsequent pushes of these Changes.
+        When a range is specified, the Changes are also --group'd.
+
+        The range can be specified as <base>..<tip> (either end can be left
+        off) or <tip>:<count>. When using 'new' instead of a range, all
+        Changes which were previously not seen on the current branch are
+        selected, while actual ranges select Changes regardless of whether
+        they were already seen, which makes it possible to revise previous
+        decisions about the authoritative source for pushes.
+        --move, --copy, and --hide can be specified multiple times. The
+        ranges may not overlap, but will override a single also specified
+        operation which uses 'new'.
+        Note that the ranges supplied to these options do NOT imply these
+        Changes getting pushed; to do so, specify them a second time as a
+        regular <from> argument.
+
+    -l, --list
+        Report all Changes that would be pushed, then quit.
+        This is a purely off-line operation.
+        Implies --all unless 'from' is specified.
+
+    -ll, --list-online
+        Report all Changes that would be pushed, then quit.
+        The Changes are annotated with state information from Gerrit.
+        Implies --all unless 'from' is specified.
 
     --aliases
         Report all registered aliases and quit.
 
     -n, --dry-run
-        Do everything except actually pushing any commits.
+        Do everything except actually pushing commits and updating state.
+        This is useful mostly for debugging.
 
     -v, --verbose
         Show the resolved aliases, SHA1s of commits, and other information.
@@ -79,29 +206,83 @@ Options:
     --debug
         Print debug information.
 
-Configuring Aliases:
-    Aliases are read from the
-        .git-gpush-aliases
-    located next to the script, then from the git config which may
-    have aliases set either locally in the current repository,
-    globally (in your ~/.gitconfig), or system-wide.
+Configuration:
+    This program uses options from the git configuration. All its keys
+    use the 'gpush.' prefix. Consequently, to configure any option, you
+    can use a command like this:
+        git config --global gpush.<the option> <the value>
+    If you want it to be local to the current repository, just drop the
+    --global option. The following options are supported:
 
-    You can add aliases to your global git config like this:
-        git config --global gpush.alias.<alias key> <alias value>
-    and if you only want it to be local to the current repository,
-    just drop the --global option.
-    Note that git config keys are constrained regarding allowed
-    characters, so it is impossible to map some IRC nicks via git
-    configuration.
+    alias.<alias>
+        An alias definition. The value is a comma-separated list of Gerrit
+        login names and/or email addresses, so it's possible to map, for
+        example, IRC nicknames or entire teams. Note that git config keys
+        are constrained regarding allowed characters, so it is impossible
+        to map some IRC nicks via git configuration; see below for an
+        alternative.
 
-    An alias may contain multiple comma-separated email addresses;
-    for example, to set a single alias for an entire team.
+    minimal
+        Whether to use minimal push mode by default.
+        Defaults to true if not configured.
 
-    Inside .git-gpush-aliases, each alias may also be a comma-separated
-    list, in case a user uses multiple handles.
+    remote
+        The default git remote to use for pushing to Gerrit.
+        When not configured, 'gerrit' is used if present, otherwise the
+        pushed branch's upstream remote is used.
+
+    upstream
+        The git remote to assume to be the upstream if the pushed branch
+        does not have a remote-tracking branch configured.
+        Defaults to 'origin' or the only present remote if not configured.
+
+    In addition to the git configuration (which takes precedence), the file
+    .git-gpush-aliases located next to this program is also read. It may
+    contain two sections: 'config' where you can use the options specified
+    above, and 'aliases'. The latter works just like alias definitions via
+    the git configuration, except that:
+    - The alias name itself may also be a comma-separated list, thus
+      supporting users with multiple handles.
+    - Most characters are permitted in the alias names.
+
+Examples:
+    git gpush .. +alex
+        Push HEAD and its ancestors for the upstream branch of HEAD, and
+        add 'alex' as a reviewer. No rebasing is initially done, but note
+        that the remote base will stick even if you subsequently rebase
+        the local branch.
+
+    git gpush I2c9ccbc26..I9434d28fc
+        Push the range identified by Gerrit Change-Ids for the upstream
+        branch of HEAD, rebased on top of the local branch's base.
+
+    git gpush ~1:3 -b 5.4 -o 85af7f4538b
+        Push the range HEAD~4..HEAD~1 for branch 5.4, rebased on top of
+        commit 85af7f4538b.
+
+    git gpush Iedb5bd8ca8:3
+    ...
+    git gpush Iedb5bd8ca8
+        Push the Change Iedb5bd8ca8 and the two Changes in front of it.
+        Subsequently, re-push the Changes, specifying only the tip.
+
+    git gpush :3 +alex
+    ...
+    git commit -a -m "Another commit"
+    git gpush -e -g
+    ...
+    git commit -a -m "An unrelated commit"
+    git gpush :1
+    ...
+    git gpush ~1 +alex
+        First push the top three commits for review, then add another commit
+        to the series without re-pushing instantly, then push another commit,
+        and finally re-push the first series.
 
 Copyright:
-    Copyright (C) 2015 The Qt Company Ltd.
+    Copyright (C) 2017 The Qt Company Ltd.
+    Copyright (C) 2014 Intel Corporation.
+    Copyright (C) 2019 Oswald Buddenhagen
     Contact: http://www.qt.io/licensing/
 
 License:
@@ -109,183 +290,33 @@ License:
 EOM
 }
 
-my $debug = 0;
-my $verbose = 0;
-my $quiet = 0;
-my $dry_run = 0;
-
-my $remote = "gerrit";
-my $remote_override = 0;
-my $ref_from = "HEAD";
-my $ref_to = "";
-my $ref_override = 0;
-my $draft = 0;
-
-my %aliases;
+my $from_base;
+my $from;
+my $commit_count = 0;
+my $addbase;  # default set by process_config()
+my $minimal;  # default set by process_config()
+my $extend = 0;
+my $capture = 0;
+my $ref_base;
+my $ref_base_ok = 1;
+my $ref_to;
+my $force_branch = 0;
+my $topic;
+my $force = 0;
+my $push_all = 0;
+my $group_only = 0;
+my $exclude = 0;
+my $list_only = 0;
+my $list_online = 0;
 
 my @reviewers;
 my @CCs;
 
-my @arguments;
-
-my %gitconfig;
-
-sub format_cmd(@)
-{
-    return join(' ', map { /\s/ ? '"' . $_ . '"' : $_ } @_);
-}
-
-use constant {
-    NUL_STDIN => 0,
-    USE_STDIN => 1,
-    # FWD_STDIN is not needed
-    NUL_STDOUT => 0,
-    USE_STDOUT => 4,
-    FWD_STDOUT => 8,
-    NUL_STDERR => 0,
-    # USE_STDERR is not needed
-    FWD_STDERR => 32,
-    FWD_OUTPUT => 40,
-    SILENT_STDIN => 64,  # Suppress debug output for stdin
-    SOFT_FAIL => 256,    # A non-zero exit from the process is not fatal
-    DRY_RUN => 512       # Don't actually run the command if $dry_run is true
-};
-
-sub open_process($@)
-{
-    my ($flags, @cmd) = @_;
-    my %process;
-
-    $flags &= ~DRY_RUN if (!$dry_run);
-    $process{flags} = $flags;
-    if ($flags & DRY_RUN) {
-        print "+ ".format_cmd(@cmd)." [DRY]\n" if ($debug);
-        return \%process;
-    }
-    my $cmd = format_cmd(@cmd);
-    $process{cmd} = $cmd;
-    my ($in, $out, $err);
-    if ($flags & USE_STDIN) {
-        $in = \$process{stdin};
-    } else {
-        $in = \'<&NUL';
-    }
-    if ($flags & USE_STDOUT) {
-        $out = \$process{stdout};
-    } elsif ($flags & FWD_STDOUT) {
-        $out = \'>&STDOUT';
-    } else {
-        $out = \'>&NUL';
-    }
-    if ($flags & FWD_STDERR) {
-        $err = \'>&STDERR';
-    } else {
-        $err = \'>&NUL';
-    }
-    print "+ $cmd\n" if ($debug);
-    open(NUL, '>'.File::Spec->devnull()) or die("Failed to open bitbucket: $!\n");
-    eval { $process{pid} = open3($$in, $$out, $$err, @cmd); };
-    die("Failed to run \"$cmd[0]\": $!\n") if ($@);
-    close(NUL);
-    return \%process;
-}
-
-sub close_process($)
-{
-    my ($process) = @_;
-
-    if ($$process{flags} & DRY_RUN) {
-        $? = 0;
-        return 0;
-    }
-    my $cmd = $$process{cmd};
-    if ($$process{stdout}) {
-        close($$process{stdout}) or die("Failed to close read pipe of '$cmd': $!\n");
-    }
-    waitpid($$process{pid}, 0) or die("Failed to wait for '$cmd': $!\n");
-    if ($? & 128) {
-        die("'$cmd' crashed with signal ".($? & 127).".\n") if ($? != 141); # allow SIGPIPE
-        $? = 0;
-    } elsif ($? && !($$process{flags} & SOFT_FAIL)) {
-        exit($? >> 8);
-    }
-    return 0;
-}
-
-# Write any number of lines to the process' stdin.
-# The input is expected to already contain trailing newlines.
-# This function must be called exactly once iff USE_STDIN is used.
-# Note that this will deadlock with USE_STDOUT if the process outputs
-# too much before all input is written.
-sub write_process($@)
-{
-    my ($process, @input) = @_;
-
-    my $stdin = $$process{stdin};
-    my $silent = ($$process{flags} & SILENT_STDIN);
-    my $dry = ($$process{flags} & DRY_RUN);
-    local $SIG{PIPE} = "IGNORE";
-    foreach (@input) {
-        print "> $_" if ($debug && !$silent);
-        print $stdin $_ if (!$dry);
-    }
-    $dry or close($stdin) or die("Failed to close write pipe of '$$process{cmd}': $!\n");
-}
-
-# Read a line from the process' stdout.
-sub read_process($)
-{
-    my ($process) = @_;
-
-    my $fh = $$process{stdout};
-    $_ = <$fh>;
-    if (defined($_)) {
-        chomp;
-        print "- $_\n" if ($debug);
-    }
-    return $_;
-}
-
-# Read any number of null-terminated fields from the process' stdout.
-sub read_fields($@)
-{
-    my $process = shift;
-    my $fh = $$process{stdout};
-    return 0 if (eof($fh));
-    local $/ = "\0";
-    for (@_) { chop($_ = <$fh>); }
-    return 1;
-}
-
-# The equivalent of system().
-sub run_process($@)
-{
-    my ($flags, @cmd) = @_;
-
-    close_process(open_process($flags, @cmd));
-}
-
-# The equivalent of popen("r").
-sub open_cmd_pipe($@)
-{
-    my ($flags, @cmd) = @_;
-
-    return open_process(USE_STDOUT | FWD_STDERR | $flags, @cmd);
-}
-
-# Run the specified command and try to read exactly one line from its stdout.
-sub read_cmd_line($@)
-{
-    my ($flags, @cmd) = @_;
-
-    my $proc = open_cmd_pipe($flags, @cmd);
-    read_process($proc);
-    close_process($proc);
-    return $_;
-}
-
 sub parse_arguments(@)
 {
+    my $rebase = 0;
+    my $minimal_override = 0;
+    my $not_exclude = 0;
     while (scalar @_) {
         my $arg = shift @_;
 
@@ -298,13 +329,47 @@ sub parse_arguments(@)
             $verbose = 1;
         } elsif ($arg eq "-n" || $arg eq "--dry-run") {
             $dry_run = 1;
-        } elsif ($arg eq "-d" || $arg eq "--draft") {
-            $draft = 1;
-        } elsif ($arg eq "-p" || $arg eq "--publish") {
-            $draft = -1;
+        } elsif ($arg eq "-e" || $arg eq "--extend") {
+            $extend = 1;
+        } elsif ($arg eq "-c" || $arg eq "--capture") {
+            $capture = 1;
+        } elsif ($arg eq "-g" || $arg eq "--group") {
+            $group_only = 1;
+            $not_exclude = 1;
+        } elsif ($arg eq "-x" || $arg eq "--exclude") {
+            $group_only = 1;
+            $exclude = 1;
+        } elsif ($arg eq "-m" || $arg eq "--minimal") {
+            $minimal = 1;
+            $minimal_override = 1;
+        } elsif ($arg eq "-nm" || $arg eq "--not-minimal") {
+            $minimal = 0;
+            $minimal_override = 1;
+        } elsif ($arg eq "-f" || $arg eq "--force") {
+            $force = 1;
         } elsif ($arg eq "-r" || $arg eq "--remote") {
-            die("--remote needs an argument.\n") if (!@_ || ($_[0] =~ /^-/));
+            fail("--remote needs an argument.\n") if (!@_ || ($_[0] =~ /^-/));
             $remote = shift @_;
+        } elsif ($arg eq "-t" || $arg eq "--topic") {
+            fail("--topic needs an argument.\n") if (!@_ || ($_[0] =~ /^-/));
+            $topic = shift @_;
+        } elsif ($arg eq "-b" || $arg eq "--branch") {
+            fail("--branch needs an argument.\n") if (!@_ || ($_[0] =~ /^-/));
+            $ref_to = shift @_;
+        } elsif ($arg eq "-fb" || $arg eq "--force-branch") {
+            $force_branch = 1;
+        } elsif ($arg eq "-o" || $arg eq "--onto" || $arg eq "--base") {
+            fail("--onto needs an argument.\n") if (!@_ || ($_[0] =~ /^-/));
+            $ref_base = shift @_;
+        } elsif ($arg eq "--rebase") {
+            $rebase = 1;
+        } elsif ($arg eq "-a" || $arg eq "--all") {
+            $push_all = 1;
+        } elsif ($arg eq "-l" || $arg eq "--list") {
+            $list_only = 1;
+        } elsif ($arg eq "-ll" || $arg eq "--list-online") {
+            $list_only = 1;
+            $list_online = 1;
         } elsif ($arg eq "--aliases") {
             foreach my $key (sort(keys %aliases)) {
                 print "$key = $aliases{$key}\n";
@@ -313,122 +378,119 @@ sub parse_arguments(@)
         } elsif ($arg eq "-?" || $arg eq "--?" || $arg eq "-h" || $arg eq "--help") {
             usage();
             exit 0;
-        } elsif ($arg eq "--") {
-            push @arguments, @_;
-            return;
+        } elsif (parse_source_option($arg, 0, @_)) {
+            # Nothing
         } elsif ($arg =~ /^\+(.+)/) {
             push @reviewers, split(/,/, lookup_alias($1));
         } elsif ($arg =~ /^\=(.+)/) {
             push @CCs, split(/,/, lookup_alias($1));
-        } elsif ($arg =~ /^\-(.+)/) {
-            push @arguments, $arg;
-        } elsif (!$remote_override || !$ref_override) {
-            if ($arg =~ /(.*):(.*)/) {
-                $ref_from = $1 if (defined $1 && $1 ne "");
-                $ref_to = $2 if (defined $2 && $2 ne "");
-                $ref_override = 1;
-            } else {
-                print STDERR "Warning: Specifying a bare remote is deprecated.".
-                             " Use --remote instead.\n";
-                $remote = $arg;
-                $remote_override = 1;
-            }
-        } else {
-            push @arguments, $arg;
-        }
-    }
-
-    die("--quiet and --verbose/--debug are mutually exclusive.\n")
-        if ($quiet && $verbose);
-
-    if ($ref_to =~ s,^refs/for/,,) {
-        die "Pushing to refs/for/ is inconsistent with the --draft option.\n" if ($draft > 0);
-        print STDERR "Notice: it is unnecessary to specify refs/for/ in the target ref.\n"
-            if (!$quiet);
-    } elsif ($ref_to =~ s,^refs/drafts/,,) {
-        die "Pushing to refs/drafts/ is inconsistent with the --publish option.\n" if ($draft < 0);
-        if ($draft) {
-            print STDERR "Notice: it is unnecessary to specify refs/drafts/ in the target ref.\n"
-                if (!$quiet);
-        } else {
-            print STDERR "Notice: prefer the --draft option over specifying refs/drafts/ in the target ref.\n"
-                if (!$quiet);
-            $draft = 1;
-        }
-    }
-}
-
-sub fileContents($)
-{
-    my ($filename) = @_;
-
-    my @contents = "";
-    my $fh;
-    if (-e $filename && open($fh, "< $filename")) {
-        @contents = <$fh>;
-        close $fh;
-    }
-    return @contents;
-}
-
-sub git_configs($)
-{
-    my ($key) = @_;
-    my $ref = $gitconfig{$key};
-    return defined($ref) ? @$ref : ();
-}
-
-sub git_config($;$)
-{
-    my ($key, $dflt) = @_;
-    my @cfg = git_configs($key);
-    return scalar(@cfg) ? $cfg[-1] : $dflt;
-}
-
-sub load_config()
-{
-    my $script_path = dirname($0);
-
-    # Read aliases from .git-gpush-aliases file
-    my $in_aliases = 1;
-    foreach my $line (fileContents("$script_path/.git-gpush-aliases")) {
-        chomp $line;
-        $line =~ s,(#|//).*$,,;             # Remove any comments
-        if ($line =~ /^\[([^]]+)\]/) {
-            if ($1 eq "aliases") {
-                $in_aliases = 1;
-            } elsif ($1 eq "config") {
-                $in_aliases = 0;
-            } else {
-                die("Unrecognized section '$1' in alias file.\n");
-            }
-        } elsif ($line =~ /^\s*([^ =]+)\s*=\s*(.*?)\s*$/) {  # Capture the value
-            if ($in_aliases) {
-                for my $alias (split(/,/, $1)) {
-                    $aliases{$alias} = $2;
+        } elsif ($arg !~ /^\-/) {
+            fail("Specifying multiple sources is currently not supported.\n")
+                if (defined($from));
+            # The assumption that no legitimate branch would have a purely numerical
+            # name seems reasonable, so this overloading of the syntax should be safe.
+            if ($arg =~ /^(.*):(\d+)$/) {
+                $from = length($1) ? $1 : 'HEAD';
+                $commit_count = $2;
+            } elsif ($arg =~ /(.*):(.*)/) {
+                if (length($1)) {
+                    $from = $1;
+                    print STDERR "Warning: Specifying <from>: is deprecated.".
+                                 " Use just <from> instead.\n";
+                }
+                if (length($2)) {
+                    $ref_to = $2;
+                    print STDERR "Warning: Specifying :<ref-to> is deprecated.".
+                                 " Use --branch instead.\n";
                 }
             } else {
-                push @{$gitconfig{"gpush.$1"}}, $2;
+                $from = $arg;
             }
+        } else {
+            fail("Unrecognized option '$arg'.\n");
         }
     }
 
-    # Read all git configuration at once, as that's faster than repeated
-    # git invocations, especially under Windows.
-    my $cfg = open_cmd_pipe(0, 'git', 'config', '-l', '-z');
-    while (read_fields($cfg, my $entry)) {
-        $entry =~ /^([^\n]+)\n(.*)$/;
-        push @{$gitconfig{$1}}, $2;
-    }
-    close_process($cfg);
+    fail("--quiet and --verbose/--debug are mutually exclusive.\n")
+        if ($quiet && $verbose);
 
-    $remote = git_config('gpush.remote', $remote);
-    die("Configuring ref-from is not supported any more.\n") if (git_config('gpush.ref-from'));
-    die("Configuring ref-to is not supported any more.\n") if (git_config('gpush.ref-to'));
-    foreach (keys %gitconfig) {
-        if (/^gpush\.alias\.(.*)$/) {
-            $aliases{$1} = git_config($_);
+    fail("--base and --rebase are mutually exclusive.\n")
+        if (defined($ref_base) && $rebase);
+    $ref_base = "" if ($rebase);
+
+    if (!defined($from)) {
+        $from = "HEAD";
+        $push_all = 1 if ($list_only);
+    } else {
+        fail("--all is incompatible with specifying commits.\n")
+            if ($push_all);
+        if ($from =~ /^(.*)\.\.(.*)$/) {
+            fail("Specifying a commit count and a range base are mutually exclusive.\n")
+                if ($commit_count);
+            ($from_base, $from) = (length($1) ? $1 : '@{u}', length($2) ? $2 :'HEAD');
         }
+    }
+
+    my $series_specific =
+            $commit_count || $from_base || $extend || $capture
+            || defined($ref_to) || defined($topic);
+    my $push_specific =
+            @reviewers || @CCs || $force || $force_branch
+            || defined($remote);
+
+    if ($group_only) {
+        fail("--group/--exclude and --list are mutually exclusive.\n")
+            if ($list_only);
+        fail("--group/--exclude and --all are mutually exclusive.\n")
+            if ($push_all);
+        fail("--group/--exclude is incompatible with push-modifying options.\n")
+            if ($push_specific);
+        fail("--group and --exclude are mutually exclusive.\n")
+            if ($exclude && $not_exclude);
+    } elsif ($list_only) {
+        fail("--list/--list-online is incompatible with --quiet/--verbose.\n")
+            if ($quiet || ($verbose && !$debug));
+        fail("--list/--list-online is incompatible with series-specific options.\n")
+            if ($series_specific);
+        fail("--list/--list-online is incompatible with push-modifying options.\n")
+            if ($push_specific || (!$list_online && $minimal_override));
+        fail("--list/--list-online is incompatible with base-modifying options.\n")
+            if (defined($ref_base));
+    } elsif ($push_all) {
+        fail("--all is incompatible with series-specific options.\n")
+            if ($series_specific);
+        # Push options are perfectly legit with --all, even if some are
+        # probably not too useful (e.g., --base).
+    }
+}
+
+use constant {
+    BASE_NO => 0,
+    BASE_MAYBE => 1,
+    BASE_YES => 2
+};
+
+sub process_config()
+{
+    load_config();
+
+    my $mi = git_config('gpush.minimal', 'true');
+    if ($mi eq 'true' || $mi eq 'yes') {
+        $minimal = 1;
+    } elsif ($mi eq 'false' || $mi eq 'no') {
+        $minimal = 0;
+    } else {
+        fail("Unrecognized value for gpush.minimal.\n");
+    }
+    my $ab = git_config('gpush.addbase', 'maybe');
+    if ($ab eq 'maybe') {
+        $addbase = BASE_MAYBE;
+    } elsif ($ab eq 'true' || $ab eq 'yes') {
+        $addbase = BASE_YES;
+    } elsif ($ab eq 'false' || $ab eq 'no') {
+        $addbase = BASE_NO;
+    } else {
+        fail("Unrecognized value for gpush.addbase.\n");
     }
 }
 
@@ -445,29 +507,142 @@ sub lookup_alias($)
     return $user;
 }
 
-sub add_reviewers()
+sub format_group_id($)
 {
-    if (@reviewers || @CCs) {
-        my @dudes;
-        push @dudes, "--receive-pack=git receive-pack";
-        push @dudes, map { " --reviewer=$_" } @reviewers;
-        push @dudes, map { " --cc=$_" } @CCs;
-        push @arguments, join('', @dudes); # Single argument to git push
-    }
+    my ($group) = @_;
+
+    my $changes = $$group{changes};
+    return format_id($$changes[-1]{id}).":".int(@$changes);
 }
 
-sub goto_gitdir()
+sub set_group_error($$$)
 {
-    my $cdup = read_cmd_line(0, 'git', 'rev-parse', '--show-cdup');
-    chdir($cdup) unless $cdup eq "";
+    my ($group, $style, $error) = @_;
+
+    ($$group{error_style}, $$group{error}) = ($style, $error);
+}
+
+sub caption_group($)
+{
+    my ($group) = @_;
+
+    my $changes = $$group{changes};
+    if (!$$group{gid}) {
+        return (sprintf("Set of %d loose Change(s):", int(@$changes)),
+                $changes);
+    }
+    my $to = $$group{branch};
+    my $tos = defined($to) ? " for $to" : "";
+    my $tpc = $$group{topic};
+    my $tpcs = length($tpc) ? ", topic '$tpc'" : "";
+    my ($pfx, $rmt) = $list_only
+                          ? ($$group{hide_mix}
+                                 ? "Partially hidden series of"
+                                 : $$group{hide}
+                                       ? "Hidden series of"
+                                       : $$group{exclude_mix}
+                                               ? "Partially excluded series of"
+                                               : $$group{exclude}
+                                                     ? "Excluded series of"
+                                                     : "Series of",
+                             ($list_online && length($tos)) ? " on '$remote'" : "")
+                          : $group_only
+                                ? ("Grouping", "")
+                                : ("Pushing", " to '$remote'");
+    return (sprintf("%s %d Change(s)%s%s%s:",
+                    $pfx, int(@$changes), $tos, $rmt, $tpcs),
+            $changes);
+}
+
+sub report_pushed_group($$)
+{
+    my ($reports, $group) = @_;
+
+    my ($title, $changes) = caption_group($group);
+    report_flowed($reports, $title);
+    report_local_changes($reports, $changes);
+    my $error = $$group{error};
+    report_text($reports, $$group{error_style}, $error) if (defined($error));
+}
+
+sub report_pushed_changes(@)
+{
+    my (@groups) = @_;
+
+    my @reports;
+    foreach my $group (@groups) {
+        report_pushed_group(\@reports, $group);
+    }
+    return \@reports;
+}
+
+# Determine a singular value for a particular attribute from the Changes
+# in a series. Conflicting values are an error.
+# The way this function is used, values set via --group take precedence
+# over the "live" values for each Change individually, not for the whole
+# series. This avoids silently overriding the attributes of Changes which
+# are moved into the series after establishing it.
+sub aggregate_property($$$$)
+{
+    my ($group, $prop_name, $get_prop, $get_ann) = @_;
+
+    my $changes = $$group{changes};
+    my %prop_map = map { $_ => 1 } grep { $_ } map { $get_prop->($_) } @$changes;
+    my @props = keys %prop_map;
+    if (@props > 1) {
+        foreach my $change (@$changes) {
+            my $p = $get_prop->($change);
+            $$change{annotation} = $get_ann->($p) if (defined($p));
+        }
+        set_group_error($group, 'flowed',
+                        "Changes were previously pushed with mixed ${prop_name}s."
+                        ." Please specify one.");
+        fail_formatted(report_pushed_changes($group));
+    }
+    if (@props) {
+        my $p = $props[0];
+        printf("Series %s re-using %s '%s'.\n", format_group_id($group), $prop_name, $p)
+            if ($debug);
+        return $p;
+    }
+    return undef;
+}
+
+sub aggregate_bool_property($$$$$)
+{
+    my ($group, $prop, $ann_prop, $err_label, $err_msg) = @_;
+
+    print "Testing $prop.\n" if ($debug);
+    my $changes = $$group{changes};
+    return if (!any { $$_{$prop} } @$changes);
+
+    print "Have some $prop.\n" if ($debug);
+    $$group{$prop} = 1;
+    return if (all { $$_{$prop} } @$changes);
+
+    print "Have mixed $prop.\n" if ($debug);
+    $$group{"${prop}_mix"} = 1;
+    return if ($list_only);
+
+    foreach my $change (@$changes) {
+        $$change{annotation} = "  [$ann_prop]"
+            if ($$change{$prop});
+    }
+    my @reports;
+    report_flowed(\@reports,
+                  "Series of ".int(@$changes)." Changes has mixed $err_label states:");
+    report_local_changes(\@reports, $changes);
+    report_fixed(\@reports, $err_msg."\n");
+    fail_formatted(\@reports);
 }
 
 # Find _the_ branch the specified commit lives on. This can be the current
 # branch (and other branches are ignored), or _one_ other branch.
-sub determine_branch($)
+sub branch_for_commit($)
 {
     my ($commit) = @_;
 
+    my $in_rebase;
     my $curbranch;
     my @otherbranches;
     my $branches = open_cmd_pipe(0, "git", "branch", "--contains", $commit);
@@ -476,6 +651,7 @@ sub determine_branch($)
             # New git versions will tell us the currently rebased branch.
             if (/^\* \(no branch, rebasing (.*)\)$/) {
                 $curbranch = $1;
+                $in_rebase = 1;
             }
             last;
         } elsif (/^\* (.*)$/) {
@@ -488,65 +664,1391 @@ sub determine_branch($)
     close_process($branches);
     if (!defined($curbranch)) {
         # If the commit is not on the current branch, see if it is on _one_
-        # other branch with a tracking branch.
+        # other branch with an upstream branch.
         my @goodbranches;
         foreach my $other (@otherbranches) {
             push @goodbranches, $other if (defined(git_config("branch.$other.merge")));
         }
         $curbranch = $goodbranches[0] if (@goodbranches == 1);
     }
-    return $curbranch;
+    return ($curbranch, $in_rebase);
 }
 
-sub determine_target()
+# Extract the local branch from the specified source.
+# There are four possibilities where the source revision may be located:
+# - On any named branch in a regular state.
+#   The branch is usable up to its tip, which may be pointed to by HEAD.
+# - On the current named branch mid-rebase.
+#   The branch is pointed to by HEAD, and is usable only up to this point.
+# - On a detached head, possibly mid-rebase.
+#   HEAD is the only reference and thus also the tip. There is no name.
+# - Nowhere, except possibly in the reflog.
+#   It is the tip, as there are no references. There is no name.
+# Note that commits specified by SHA1 which live on exactly one named
+# branch fall into the first case.
+sub determine_local_branch($)
 {
-    # Validate the source commit, to avoid confusing errors later.
-    run_process(FWD_STDERR, "git", "rev-parse", $ref_from, '--');
+    my ($source) = @_;
 
-    # Detect tracking branch if ref-to is not set
-    if ($ref_to eq "") {
-        # First, try to extract a branch name directly.
-        my $ref = $ref_from;
-        $ref =~ s/[~^].*$//;
-        if ($ref eq "HEAD") {
-            my $sref = read_cmd_line(SOFT_FAIL, "git", "symbolic-ref", "-q", "HEAD");
-            $ref = $sref if (!$?);
+    # First, try to extract a branch name directly.
+    $local_branch = ($source =~ s/[~^].*$//r);
+    if ($local_branch eq "HEAD") {
+        my $sref = read_cmd_line(SOFT_FAIL, "git", "symbolic-ref", "-q", "HEAD");
+        $local_branch = $sref if (!$?);
+    }
+    $local_branch =~ s,^refs/heads/,,;
+    $local_tip = $local_refs{$local_branch};
+    if (!defined($local_tip)) {
+        # Next, try to deduce a branch from the commit.
+        my $in_rebase;
+        ($local_branch, $in_rebase) = branch_for_commit($source);
+        # Cannot use the branch's tip mid-rebase, because the
+        # referenced commits may have been rewritten already.
+        $local_tip = $local_refs{$local_branch}
+            if (defined($local_branch) && !$in_rebase);
+    }
+    setup_remotes($source);
+    set_gerrit_config($remote);
+}
+
+# Determine the target branch for the given series.
+# The local branch's upstream branch will be used, unless a target branch
+# has been specified by the user.
+sub determine_remote_branch($)
+{
+    my ($group) = @_;
+
+    my $br = $ref_to;
+    if (!defined($br)) {
+        $br = aggregate_property($group, 'target',
+                                 sub { $_[0]->{ntgt} // $_[0]->{tgt} },
+                                 sub { '  => '.$_[0] });
+    }
+    if (!defined($br)) {
+        fail("Cannot deduce source branch for $from. Please use --branch.\n")
+            if (!defined($local_branch));
+        $br = git_config("branch.$local_branch.merge");
+        fail("$local_branch has no upstream branch. Please use --branch.\n")
+            if (!defined($br));
+        $br =~ s,^refs/heads/,,;
+    }
+    $$group{branch} = $br;
+}
+
+sub determine_topic($)
+{
+    my ($group) = @_;
+
+    my $tpc = $topic;
+    if (!defined($tpc)) {
+        # No topic was specified, so deduce it from the previous push(es).
+        $tpc = aggregate_property($group, 'topic',
+                                  sub { $_[0]->{ntopic} // $_[0]->{topic} },
+                                  sub { '  /'.$_[0] });
+    }
+    $$group{topic} = $tpc;
+}
+
+sub scan_pushed_group($$)
+{
+    my ($group, $commits) = @_;
+
+    my $changes = $$group{changes};
+    foreach my $change (@$changes) {
+        my $pcommit = $$change{pushed};
+        if (!defined($pcommit)) {
+            # In minimal mode, any previously pushed Change can be unmodified.
+            next if ($minimal);
+            # We stop at the 1st not previously pushed commit, as subsequent
+            # commits are obviously modified anyway.
+            last;
         }
-        $ref =~ s,^refs/heads/,,;
-        run_process(SOFT_FAIL, "git", "rev-parse", "--verify", "-q", "refs/heads/".$ref);
-        if ($?) {
-            # Next, try to deduce a branch from the commit.
-            $ref = determine_branch($ref_from);
-            die("Cannot deduce source branch for $ref_from.\n") if (!defined($ref));
-        }
-        $ref_to = git_config("branch.$ref.merge");
-        die("$ref has no tracking branch.\n") if (!defined($ref_to));
-        $ref_to =~ s,^refs/heads/,,;
+        push @$commits, $pcommit;
+        my $ocommit = $$change{orig};
+        push @$commits, $ocommit if (defined($ocommit));
     }
 }
 
-sub push_patches()
+# Retrieve metadata for commits corresponding with previous pushes
+# of ordered series of Changes.
+sub visit_pushed_changes($)
 {
-    if (!$draft) {
-        $_ = read_cmd_line(0, 'git', 'log', '--pretty=%s', '-1', $ref_from);
-        $draft = 1 if (/\bWIP\b|\*{3}|^(.)\1*$/i);
+    my ($groups) = @_;
+
+    my @commits;
+    foreach my $group (@$groups) {
+        scan_pushed_group($group, \@commits);
+    }
+    print "Visiting pushed commits ...\n" if ($debug);
+    visit_local_commits(\@commits);
+}
+
+sub initialize_get_changes()
+{
+    my $commit = parse_local_rev($from, SPEC_TIP);
+    if (!defined($commit)) {
+        # The revspec might refer to a Change-Id.
+        # We need a place to start from. We try only the current local branch -
+        # trying multiple branches would be expensive, potentially ambiguous
+        # (as the same Change-Id can exist multiple times), and probably not
+        # very useful to start with.
+        determine_local_branch('HEAD');
+        # Get the pool of Changes to search in, and later to push from.
+        analyze_local_branch('HEAD') or
+            fail("No local Changes (from HEAD).\n");
+        # Now try again.
+        $commit = parse_local_rev_id($from, SPEC_TIP);
+    } else {
+        # We did not need to visit the current branch to find the tip,
+        # so determine the branch from the tip now.
+        $from = "HEAD".$from if ($from =~ /^[~^]/);
+        determine_local_branch($from);
+        # Get the pool of Changes to push from.
+        # We don't limit the range and even overshoot if possible; the
+        # performance impact of that should be negligible. A corner-case
+        # benefit of this is a better error message when 1) the range base
+        # is specified by change-id, 2) it is invalid by being a descendant
+        # of the tip, and 3) the tip is NOT specified by change-id. More
+        # importantly, reverse traversal in do_determine_series() also
+        # needs the full range.
+        analyze_local_branch($local_tip // ($from =~ s/[~^].*$//r)) or
+            fail("No local Changes (from $from).\n");
+    }
+    return $commit;
+}
+
+sub finalize_get_changes($$)
+{
+    my ($changes, $gid) = @_;
+
+    my %group = (changes => $changes, gid => $gid);
+    aggregate_bool_property(\%group, "hide", "HIDDEN", "hiding",
+                            "Use --move/--copy/--hide to make it consistent.");
+    return \%group;
+}
+
+sub define_series($)
+{
+    my ($commits) = @_;
+
+    # A new group key is used if a series is being (re-)assigned;
+    # for simplicity, we do not bother preserving keys.
+    # Stealing Changes from existing series could dissolve these series
+    # entirely. This implementation does not do this for simplicity's
+    # sake, thus losing some expressiveness - but that might have been
+    # more annoying than helpful anyway.
+    return (changes_from_commits($commits), $next_group++);
+}
+
+sub determine_series($)
+{
+    my ($pivot_id) = @_;
+
+    my $pivot = $commit_by_id{$pivot_id}{change};
+    my ($changes, $gid, $echange, $prospects) = do_determine_series($pivot, $extend, $capture);
+    my $action = $group_only ? "group" : "push";
+    if (!$gid && @$changes && !$list_only) {
+        my @reports;
+        report_fixed(\@reports, "Attempted to $action ".int(@$changes)." loose Change(s):\n");
+        report_local_changes(\@reports, [ $echange ], "[ Extend: ", " ]")
+            if ($echange);
+        report_local_changes(\@reports, $changes);
+        report_fixed(\@reports, "Please ".($echange ? "use --extend or " : "")
+                                ."specify exact ranges.\n");
+        fail_formatted(\@reports);
+    }
+    if (@$prospects && !$list_only) {
+        my @reports;
+        report_fixed(\@reports, "Encountered ".int(@$prospects)." leading loose Change(s):\n");
+        report_local_changes(\@reports, $prospects);
+        report_fixed(\@reports, "While attempting to $action ".int(@$changes)." Change(s):\n");
+        report_local_changes(\@reports, $changes);
+        report_fixed(\@reports, "Please use --capture or specify exact ranges.\n");
+        fail_formatted(\@reports);
+    }
+    # The group key is preserved even when the series gains new Changes.
+    return ($changes, $gid);
+}
+
+# Get the list of local commits to push.
+sub get_changes()
+{
+    my $tip = initialize_get_changes();
+    # Assemble the series of Changes to push from the pool.
+    my ($changes, $gid);
+    if (defined($from_base)) {
+        my $base = parse_local_rev($from_base, SPEC_BASE);
+        ($changes, $gid) = define_series(get_commits_base($base, $tip, $from_base, $from));
+    } elsif ($commit_count) {
+        ($changes, $gid) = define_series(get_commits_count($tip, $commit_count, $from));
+    } else {
+        ($changes, $gid) = determine_series($tip);
+    }
+    fail("Specified commit range is empty.\n") if (!@$changes);
+    my $group = finalize_get_changes($changes, $gid);
+    # Note that grouping/excluding hidden series is also rejected,
+    # as there is just no point to it - --copy and --hide imply
+    # regrouping anyway, and --move uses the grouping of the source,
+    # so any grouping done while the Changes are hidden will be lost.
+    if ($$group{hide}) {
+        my @reports;
+        report_flowed(\@reports,
+                      "Refusing to operate hidden series of ".int(@$changes)." Change(s):");
+        report_local_changes(\@reports, $changes);
+        report_fixed(\@reports,
+                     "Operate it from the previously chosen source branch,\n",
+                     "or use --move/--copy to unhide it.\n");
+        fail_formatted(\@reports);
+    }
+    return $group;
+}
+
+# Get the list of local commits to push when pushing all series.
+sub get_all_changes()
+{
+    my $tip = initialize_get_changes();
+    my @groups;
+    my $have_loose = 0;
+    my $change = $commit_by_id{$tip}{change};
+    while (1) {
+        my ($changes, $gid);
+        ($changes, $gid, $change, undef) = do_determine_series($change, 0, 0, 1);
+        my $group = finalize_get_changes($changes, $gid);
+        aggregate_bool_property($group, "exclude", "EXCLUDED", "exclusion",
+                                "Please gpush it separately or use --group/--exclude"
+                                ." to make it consistent.")
+            if (!$$group{hide});
+        unshift @groups, $group;
+        $have_loose++ if (!$gid);
+        last if (!$change);
+    }
+    return ($have_loose, \@groups);
+}
+
+sub check_merge($$);
+
+sub check_merge($$)
+{
+    my ($parents, $failed) = @_;
+
+    my $good = 1;
+    foreach my $parentid (@$parents) {
+        my $parent = $commit_by_id{$parentid};
+        # If the parent is upstream, the merge is good.
+        next if (!$parent);
+
+        my $rparents = $$parent{parents};
+        # Merges of (good) merges are also good.
+        next if (@$rparents > 1 && check_merge($rparents, $failed));
+
+        push @$failed, $parent;
+        $good = 0;
+    }
+    return $good;
+}
+
+# Ensure that we don't implicitly create new PatchSets for non-1st
+# parents of merges, as these would most likely target the wrong branch.
+# TODO: this could be handled more nicely by doing recursive pushes
+# instead of bailing out.
+sub parents_pushed($$)
+{
+    my ($parents, $failed) = @_;
+
+    foreach my $parentid (@$parents[1 .. $#$parents]) {
+        next if (defined($gerrit_info_by_sha1{$parentid}));  # Gerrit knows it
+        my $parent = $commit_by_id{$parentid};
+        next if (!$parent);  # Already upstream
+        push @$failed, $parent;
+    }
+    return !@$failed;
+}
+
+sub check_merges($)
+{
+    my ($group) = @_;
+
+    foreach my $change (@{$$group{changes}}) {
+        my $commit = $$change{local};
+        my $parents = $$commit{parents};
+        if (@$parents > 1) {
+            my (@failed, $header);
+            if (!check_merge($parents, \@failed)) {
+                $header = ",----- Merge of non-upstream commit(s) -----\n";
+                set_group_error($group, 'fixed',
+                                "Maybe you forgot to use git gpull instead of git pull?\n");
+            } elsif (!parents_pushed($parents, \@failed)) {
+                $header = ",----- Parent merge(s) not pushed yet ------\n";
+                set_group_error($group, 'fixed', "Please push the parent(s) first.\n");
+            } else {
+                next;
+            }
+            $$change{annotation} = '  [FAIL]';
+            set_change_error($change, 'fixed',
+                             $header.format_commits(\@failed, "| ")
+                             ."`-------------------------------------------\n");
+            fail_formatted(report_pushed_changes($group));
+        }
+    }
+}
+
+# Assign each local Change to a matching remote Change if possible,
+# on the way complaining about creating duplicates.
+sub map_remote_group($$$$)
+{
+    my ($group, $bad_groups, $some, $multi) = @_;
+
+    my $changes = $$group{changes};
+    my $br = $$group{branch};
+    my (@bad_chg, %bad_br);
+    foreach my $change (@$changes) {
+        my $gis = $gerrit_infos_by_id{$$change{id}};
+        next if (!$gis);
+        my ($good, @bad);
+        foreach my $gi (@$gis) {
+            if ($$gi{branch} eq $br) {
+                $good = $gi;
+            } elsif ($$gi{status} ne "MERGED") {
+                # MERGED Changes are ignored, to avoid false positives for cherry-picks.
+                push @bad, $gi;
+            }
+        }
+        if ($good) {
+            $$change{gerrit} = $good;
+            # This overrides the current value, which is just a cache.
+            $$change{topic} = $$good{topic};
+            # If the pending topic was set to match the server, drop the update.
+            $$change{ntopic} = undef
+                if (($$change{ntopic} // "") eq ($$good{topic} // ""));
+        } elsif (@bad && !$force_branch) {
+            my @bbr = map { $$_{branch} } @bad;
+            $$change{annotation} = '  ['.join(" ", sort @bbr).']';
+            push @bad_chg, $change;
+            $bad_br{$_} = 1 foreach (@bbr);
+        }
+    }
+    if (@bad_chg) {
+        push @$bad_groups, $group;
+        $$some = 1 if (@bad_chg != @$changes);
+        $$multi = 1 if (keys(%bad_br) > 1);
+    }
+}
+
+sub map_remote_changes($)
+{
+    my ($groups) = @_;
+
+    my (@bad_groups, $some, $multi);
+    foreach my $group (@$groups) {
+        map_remote_group($group, \@bad_groups, \$some, \$multi);
+    }
+    if (@bad_groups) {
+        my $reports = report_pushed_changes(@bad_groups);
+        my $tpfx = $some ? "Some of the" : "The";
+        my $tsfx = $multi ? "different branches" : "a different branch";
+        report_fixed($reports,
+                     "$tpfx Change(s) were previously pushed only for $tsfx.\n",
+                     "Please move them server-side, push for a matching branch,\n",
+                     "or use --force-branch to continue nonetheless.\n");
+        fail_formatted($reports);
+    }
+}
+
+use constant {
+    NEW => 'NEW',
+    KNOWN => 'KNOWN',
+    FORCE => 'FORCE',
+    MISSING => 'MISSING',
+    MODIFIED => 'MODIFIED',
+    UNMODIFIED  => 'UNMODIFIED',
+    OUTDATED => 'OUTDATED',
+    MERGED => 'MERGED',
+    REJECTED => 'REJECTED',
+    FAILED => 'FAILED'
+};
+
+sub resolve_ref_base($)
+{
+    my ($queries) = @_;
+
+    return if (!length($ref_base) || ($ref_base eq "ROOT"));
+    print "Resolving specified push base ...\n" if ($debug);
+    # Make sure we don't get confusing errors later.
+    # Also, we need a full SHA1 we can compare.
+    $ref_base = read_cmd_line(SOFT_FAIL, "git", "rev-parse", "--verify", $ref_base."^{commit}");
+    fail("... while resolving --base commit.\n")
+        if ($?);
+    visit_local_commits([ $ref_base ]);
+    if (!$commit_by_id{$ref_base}) {
+        print "--base is upstream.\n" if ($debug);
+    } else {
+        print "--base needs Gerrit query.\n" if ($debug);
+        # Note: this will not recognize direct-pushed commits. That isn't
+        # really a problem, as the only expected use case for specifying
+        # a non-upstream base is pushing on top of another pending review.
+        push @$queries, "commit:".$ref_base;
+        $ref_base_ok = 0;
+    }
+}
+
+sub confirm_ref_base()
+{
+    return if ($ref_base_ok);
+    fail("Specified --base commit is not known to Gerrit.\n")
+        if (!defined($gerrit_info_by_sha1{$ref_base}));
+}
+
+sub determine_base($)
+{
+    my ($group) = @_;
+
+    confirm_ref_base();
+    my $base = $ref_base;
+    if (!defined($base)) {
+        # We have no base yet, so deduce it from the previous push(es).
+        # The simple approach would be using the merge-base(s) of the
+        # previous push(es) and upstream. However, that would not work
+        # if we based the series on another pending series. To address
+        # this, we could stop the ancestor traversal at the first Change
+        # which is not part of this series. But then Changes dropped from
+        # the bottom of the series would appear to be bases. That means
+        # that we need to record the base of each push explicitly.
+        #
+        # Note that gpick'ing (or re-syncing after manual picking) records
+        # the base of the Change's series as seen on Gerrit. That implies
+        # that if a series was picked only partially, re-pushing it with
+        # gpush will "rebase up" these Changes, thus making their order
+        # relative to the omitted Changes ambiguous on Gerrit. This may
+        # be surprising at first, but it makes sense, as a partial pick
+        # is functionally equivalent to gpick-ing the entire series and
+        # subsequently dropping some Changes locally.
+        $base = aggregate_property($group, 'base',
+                                   sub { $_[0]->{nbase} // $_[0]->{base} },
+                                   sub { '  @'.($_[0] ? substr($_[0], 0, 8) : "<reset>") });
+        # Technically, we should re-validate the base before each push,
+        # because pending PatchSets (or entire Changes) can be deleted,
+        # and upstream commits can disappear due to forced pushes.
+        # While querying base PatchSets along with the pushed Changes
+        # would be cheap and easy, we'd still need a fallback for direct-
+        # pushed base commits, and we'd need to fetch the target remote
+        # if we wanted to catch forced pushes reliably.
+        # This all doesn't appear to be worth it ...
+    }
+    if (!length($base)) {
+        $base = $local_base;
+        printf("Basing series %s on local branch's base.\n", format_group_id($group))
+            if ($verbose);
+    }
+    $$group{base} = $base;
+}
+
+# Get a set of Changes which were part of the previous push of each
+# specified Change, but have been upstreamed since.
+sub get_upstreamed_changes($)
+{
+    my ($changes) = @_;
+
+    my %pushed_changes = map { $$_{id} => 1 } @$changes;
+    my %upstreamed_changes;
+    my %query_bases;
+    foreach my $change (@$changes) {
+        my ($sha1, $base) = ($$change{pushed}, $$change{base});
+        next if (!defined($sha1));
+        # This will miss Changes which were exclusively on top of the
+        # specified Changes, which is just fine for our purposes, as
+        # these Changes obviously cannot have been the parents.
+        my $any;
+        while (1) {
+            my $commit = $commit_by_id{$sha1};
+            if (!$commit) {
+                # Handle legacy data without recorded push base.
+                $base = $sha1;
+                last;
+            }
+            my $changeid = $$commit{changeid};
+            if (!defined($pushed_changes{$changeid})) {
+                $upstreamed_changes{$changeid} = 1;
+                $any = 1;
+            } else {
+                # We omit Changes which are also part of the current push -
+                # this saves time (mostly only when all are still there)
+                # and avoids anomalies with re-applied reverted Changes.
+            }
+            $sha1 = get_1st_parent($commit);
+            last if (defined($base) && ($base eq $sha1));
+        }
+        if ($any) {
+            # Record the push base of the Change - if the Change is actually
+            # in our upstream, it will be so between its push base (which
+            # cannot be younger than the branch's tip at that time) and the
+            # local branch's merge base with upstream.
+            # We collect bases separately, because one Change-Id can map to
+            # multiple bases due to partially updated series.
+            $query_bases{$base} = 1;
+        }
+    }
+    if (%upstreamed_changes) {
+        print "Enumerating upstreamed Changes ...\n" if ($debug);
+        my $upstream_cids = visit_upstream_commits([ $local_base ], [ keys %query_bases ]);
+        foreach my $changeid (keys %upstreamed_changes) {
+            if (!defined($$upstream_cids{$changeid})) {
+                # Changes which are not in our upstream were presumably
+                # dropped from the push intentionally.
+                print "Dropping omitted non-upstream $changeid.\n"
+                    if ($debug);
+                delete $upstreamed_changes{$changeid};
+            } else {
+                print "Keeping upstreamed $changeid.\n" if ($debug);
+            }
+        }
+    }
+    return \%upstreamed_changes;
+}
+
+sub do_advance_base($$$$);
+
+sub do_advance_base($$$$)
+{
+    my ($base_id, $base_cid, $sha1, $upstreamed_changes) = @_;
+
+    # If the candidate commit is already the base, there is nothing to do.
+    return 1 if ($sha1 eq $$base_id);
+
+    my $commit = $commit_by_id{$sha1};
+    # Terminate if we reached the bottom of the series, or in non-minimal
+    # mode the pushed commit was not visited due to being on top of new
+    # Changes (which is ok, because the injection chain is then interrupted
+    # anyway).
+    return 0 if (!$commit);
+
+    my $changeid = $$commit{changeid};
+    # Terminate if we encounter the Change corresponding with the base
+    # commit, but with a different SHA1. This is merely an optimization
+    # which avoids that we always traverse down to the bottom of the
+    # series, which would be O(n^2) with its length.
+    return 0 if ($changeid eq $base_cid);
+
+    # Recurse until we encounter the base, and propagate termination.
+    return 0 if (!do_advance_base($base_id, $base_cid, get_1st_parent($commit), $upstreamed_changes));
+
+    # Terminate unless the candidate Change is in our upstream. Note that
+    # we test that only after returning from the recursion, so Changes
+    # which were dropped from or moved towards the end of a series are
+    # simply left off rather than entirely disrupting the mechanism.
+    return 0 if (!defined($$upstreamed_changes{$changeid}));
+
+    print "Injecting upstreamed $changeid ($sha1).\n" if ($debug);
+    $$base_id = $sha1;
+    return 1;
+}
+
+# If Changes from the previous push were already upstreamed and the local
+# series was subsequently rebased, it would be necessary to rebase the
+# push to make the remaining commits still apply. To avoid the churn
+# resulting from this, we simply inject the upstreamed commits in front
+# of the actually applied ones.
+sub advance_base($$$)
+{
+    my ($base_id, $sha1, $upstreamed_changes) = @_;
+
+    if (defined($sha1)) {
+        my $base = $commit_by_id{$$base_id};
+        # Pre-get the base's Change-Id for quick comparison later on.
+        # The base of the 1st commit in the series was likely not visited.
+        my $base_cid = $base ? $$base{changeid} : "";
+        do_advance_base($base_id, $base_cid, $sha1, $upstreamed_changes);
+    }
+}
+
+sub prepare_rebase($$$)
+{
+    my ($change, $base_id, $try_minimal) = @_;
+
+    my $old_id = $$change{pushed};
+    if (!defined($old_id)) {
+        print "Not previously pushed.\n" if ($debug);
+        return;
+    }
+    my $old_commit = $commit_by_id{$old_id};
+    if (!$old_commit) {
+        # Previously pushed Changes on top of fresh ones may be unvisited,
+        # as visit_pushed_changes() skips them in non-minimal mode.
+        print "Previously pushed, but not visited.\n" if ($debug);
+        return;
     }
 
-    print "Pushing $ref_from for $ref_to on $remote ...\n" if (!$quiet);
+    my $old_base_id = get_1st_parent($old_commit);
+    if ($base_id eq $old_base_id) {
+        # We are picking the same Change to the same base.
+        print "Previously pushed, same base SHA1.\n" if ($debug);
+        return ($old_commit, $old_base_id);
+    }
+    if ($try_minimal) {
+        my $old_base = $commit_by_id{$old_base_id};
+        if ($old_base) {
+            if ($$old_base{changeid} eq $commit_by_id{$base_id}{changeid}) {
+                # The actual base changed, but we may still get lucky with
+                # applying the commit to the base of the previous push.
+                print "Previously pushed, trying old base.\n" if ($debug);
+                return ($old_commit, $old_base_id, 1);
+            }
+        }
+        # Even the logical base changed (Changes were re-ordered).
+        print "Previously pushed, but re-ordered.\n" if ($debug);
+        return;
+    }
+
+    # The Change had previously a different parent commit. It is
+    # irrelevant whether the Changes were re-shuffled or the parent
+    # Change was amended - a new base will yield a new commit.
+    print "Previously pushed, different base SHA1.\n" if ($debug);
+    return;
+}
+
+sub commits_equal($$$$)
+{
+    my ($base_id, $tree, $commit, $old_commit) = @_;
+
+    return $old_commit
+        && ($tree eq $$old_commit{tree})
+        && ($base_id eq get_1st_parent($old_commit))
+        && (get_more_parents($commit) eq get_more_parents($old_commit))
+        && ($$commit{message} eq $$old_commit{message})
+        && ("@{$$commit{author}}" eq "@{$$old_commit{author}}");
+}
+
+sub rebase_commit($$$$$)
+{
+    my ($commit, $base_id, $old_commit, $old_base_id, $orig_id) = @_;
+
+    my $parents = $$commit{parents};
+    my $parent_id = get_1st_commit($parents);
+
+    if ($base_id eq $parent_id) {
+        # Same base, so no need to actually rebase.
+        if (commits_equal($base_id, $$commit{tree}, $commit, $old_commit)) {
+            # The source commit was amended, but without real change.
+            return ($old_commit, 're-created w/o rebase');
+        }
+        # No previously pushed commit or it does not match,
+        # so use the source commit as-is.
+        return ($commit, 'verbatim');
+    }
+
+    # Technically, it would be possible to rebase merges along the
+    # first parents, but there is no point in supporting this here.
+    return if (@$parents > 1);
+
+    my ($tree, $errors);
+    my $parent = $commit_by_id{$parent_id};
+    if ($old_commit && ($base_id eq $old_base_id) && defined($orig_id)) {
+        if ($$commit{id} eq $orig_id) {
+            # We are picking the same commit to the same base, so
+            # we can just recycle the previously created commit.
+            return ($old_commit, 'recycled unmodified');
+        }
+        my $orig_commit = $commit_by_id{$orig_id};
+        if ($orig_commit && ($$commit{tree} eq $$orig_commit{tree})) {
+            # Upstream commits are not visited, so we get no tree id. However,
+            # as this code aims at series which were not rebased, using the base
+            # commit itself will work just as well for the series' first commit.
+            if (($parent ? $$parent{tree} : $parent_id)
+                    eq get_1st_parent_tree($orig_commit)) {
+                if (($$commit{message} eq $$orig_commit{message})
+                        && ("@{$$commit{author}}" eq "@{$$orig_commit{author}}")) {
+                    # We are picking the same content to the same base, so
+                    # we can just recycle the previously created commit.
+                    return ($old_commit, 'recycled amended');
+                }
+                # We are picking the same diff to the same base, so
+                # we can recycle the previously created tree.
+                $tree = $$old_commit{tree};
+                goto COMMIT;
+            }
+        }
+    }
+    my $base = $commit_by_id{$base_id};
+    if ($base && $parent && ($$base{tree} eq $$parent{tree})) {
+        # The parent commits differ, but their trees are the same.
+        $tree = $$commit{tree};
+    } else {
+        ($tree, $errors) = apply_diff($commit, $base_id, USE_STDERR);
+        return (undef, undef, $errors) if (!defined($tree));
+    }
+
+    if (commits_equal($base_id, $tree, $commit, $old_commit)) {
+        # If we produced the same contents as last time, we re-use the
+        # commit we already have in the _pushed ref - that way, we save
+        # some work, and any local rebasing will not affect the final SHA1.
+        return ($old_commit, 're-created w/rebase');
+    }
+
+    # No previously pushed commit or it does not match,
+    # so create a new one.
+  COMMIT:
+    my $new_parents = ($base_id eq 'ROOT') ? [] : [ $base_id ];
+    my $new_commit = create_commit(
+            $new_parents, $tree, $$commit{message},
+            $$commit{author}, $$commit{committer});
+    $$new_commit{changeid} = $$commit{changeid};
+    $$new_commit{subject} = $$commit{subject};
+    return ($new_commit, 'fresh');
+}
+
+my $have_conflicts = 0;
+
+sub do_rebase_changes($$)
+{
+    my ($group, $upstreamed_changes) = @_;
+    my ($base, $changes) = ($$group{base}, $$group{changes});
+
+    printf("Rebasing %s to %s.\n", format_group_id($group), format_id($base))
+        if ($verbose);
+
+    # Preparation for advance_base(). We "pull down" the parent commits from
+    # subsequent previously pushed Changes into preceding new ones, to avoid
+    # that the "gap" in the chain disrupts the mechanism.
+    my $pchg;
+    foreach my $change (@$changes) {
+        $pchg = $change if (!$pchg);
+        my $old_id = $$change{pushed};
+        next if (!defined($old_id));
+        my $old_commit = $commit_by_id{$old_id};
+        next if (!$old_commit);
+        $$pchg{old_parent_id} = get_1st_parent($old_commit);
+        $pchg = undef;
+    }
+
+    # We don't attempt minimal mode when the base of the entire push
+    # changed.
+    # We could in principle try to base fragments on the old base,
+    # but then the saved base will be either a lie or the push would
+    # have multiple bases. Both would cause problems later on.
+    # FIXME: This reasoning is debatable.
+    my $try_minimal = $minimal
+            && ($base eq ((first { defined($_) } map { $$_{base} } @$changes) // ""));
+
+    my @gaps;  # Stack of fragmentation points.
+    my $holdoff = 0;  # Remaining size of rewound gap.
+    my $failed = 0;  # No final success possible any more.
+    for (my $idx = 0; $idx < @$changes; ) {
+        my $change = $$changes[$idx];
+        my $commit = $$change{local};
+        printf("Rebasing [%d] %s\n", $idx, format_commit($commit, -14)) if ($debug);
+        # We attempt to re-create the exact same commits we pushed previously,
+        # so we don't create new PatchSets for umodified Changes regardless of
+        # any local rebasing. Optionally, we may even attempt that for Changes
+        # on top of modified Changes (thus fragmenting the push).
+        my ($old_commit, $old_base);
+        my ($new_base, $try_old_base) = ($base, 0);
+        if ($holdoff > 0) {
+            # When re-using a previous base fails, we rewind and try to apply
+            # the commits again. Obviously, this time we must not try old bases.
+            # This also implies that none of the recycling magic can possibly be
+            # successful, so it's all in the else branch.
+            $holdoff--;
+            print "Not trying old base.\n" if ($debug);
+        } else {
+            advance_base(\$new_base, $$change{old_parent_id}, $upstreamed_changes);
+            ($old_commit, $old_base, $try_old_base) =
+                    prepare_rebase($change, $new_base, $try_minimal && $idx);
+            $new_base = $old_base if ($try_old_base);
+        }
+        if ($failed && !$try_old_base && !@gaps) {
+            print "Already failed and not nested; skipping.\n" if ($debug);
+            $$change{freshness} = FAILED;
+            $base = $$commit{id};
+            $idx++;
+            next;
+        }
+        my ($new_commit, $did, $errors) =
+                rebase_commit($commit, $new_base, $old_commit, $old_base, $$change{orig});
+        if (!$new_commit) {
+            if (!defined($errors)) {
+                set_change_error($change, 'oneline',
+                                 "Rebasing merges is not supported.");
+            } else {
+                if ($try_old_base) {
+                    # This was an attempt to fragment the push.
+                    # Just try again on top of the pending push.
+                    print "Failed to apply; retrying with new base.\n" if ($debug);
+                    $holdoff = 1;
+                    next;
+                }
+                if (@gaps) {
+                    # We tried to apply on top of a pending push, but that one was
+                    # fragmented itself. So rewind to the last fragmentation point
+                    # and retry without it. Of course, this causes creation of new
+                    # PatchSets for unmodified Changes.
+                    $holdoff = $idx;
+                    $idx = pop @gaps;
+                    $holdoff -= $idx;
+                    print "Failed to apply; rewinding by $holdoff.\n" if ($debug);
+                    $holdoff++;
+                    $change = $$changes[$idx - 1];
+                    $base = ($$change{final} // $$change{local})->{id};
+                    next;
+                }
+                # Failure to apply to the current base is fatal.
+                set_change_error($change, 'fixed',
+                                 ",----- Failed to rebase commit ------\n"
+                                 .($errors =~ s/^/| /mgr)
+                                 ."\`------------------------------------\n")
+                    if (!$failed);  # Otherwise it's too much noise.
+            }
+            $$change{freshness} = FAILED;
+            $have_conflicts++;
+            if ($try_minimal) {
+                # In minimal mode we continue even after a real failure, to
+                # produce useful annotations for as many commits as possible.
+                print "Failed to apply.\n" if ($debug);
+                $failed = 1;
+                # Use the unrebased commit as the base. This is necessary for
+                # base comparison by Change-Id in prepare_rebase(). Comparison
+                # by SHA1 will fail anyway, so this is safe.
+                $base = $$commit{id};
+                $idx++;
+                next;
+            }
+            last;
+        }
+        printf("Picked as %s (%s)\n", format_id($$new_commit{id}), $did) if ($debug);
+        if ($try_old_base) {
+            if ($new_commit != $old_commit) {
+                # The commit applied on top of the old base, but it was actually
+                # modified. It is counterproductive to fragment the push in this
+                # case, so just apply it on top of the pending push, after all.
+                print "Produced different commit; re-doing with new base.\n" if ($debug);
+                $holdoff = 1;
+                next;
+            }
+            # The commit applied on top of the old base and yielded the previously
+            # pushed commit. This means that there is no need to re-push this commit.
+            # However, a subsequent commit may have been modified, in which case it
+            # will need re-pushing. In case it applies on top of its old base as well,
+            # the push needs to be fragmented for the different bases; we call the
+            # unpushed commits in the middle a "gap". However, if the subsequent
+            # commit does not apply on top of its old base (because it has a dependency
+            # on a modification before the gap), we need to close the gap and retry.
+            # Therefore, we record the fragmentation point before continuing. Gaps can
+            # be nested, so this is a stack.
+            print "Started new gap.\n" if ($debug);
+            push @gaps, $idx;
+        }
+        %commit2diff = () if (!@gaps && !$holdoff);
+        $$change{final} = $new_commit;
+        $base = $$new_commit{id};
+        $idx++;
+    }
+}
+
+sub rebase_changes($$)
+{
+    my ($group, $upstreamed_changes) = @_;
+
+    with_local_git_index(\&do_rebase_changes, $group, $upstreamed_changes);
+}
+
+sub classify_changes_offline($)
+{
+    my ($group) = @_;
+
+    foreach my $change (@{$$group{changes}}) {
+        if (defined($$change{pushed})) {
+            # We would need to rebase to know, but we didn't, so make no
+            # particular claims about the exact state.
+            $$change{freshness} = KNOWN;
+        } else {
+            $$change{freshness} = NEW;
+        }
+    }
+}
+
+my $have_rejected = 0;
+my $have_modified = 0;
+my $need_force = 0;
+
+sub classify_changes_online($)
+{
+    my ($group) = @_;
+
+    my $any_modified = 0;
+    foreach my $change (@{$$group{changes}}) {
+        my $commit = $$change{final};
+        next if (!$commit);  # Rebase failure
+        my $sha1 = $$commit{id};
+        my $ginfo = $$change{gerrit};
+        my $status = $ginfo && $$ginfo{status};
+        my $curr_sha1 = $ginfo && $$ginfo{revs}[-1]{id};
+        my $chg_revs = $ginfo && $$ginfo{rev_by_id};
+        my $this_rev = $chg_revs && $$chg_revs{$sha1};
+        if ($this_rev) {
+            $$change{patchset} = $$this_rev{ps};
+            $$change{freshness} =
+                ($status eq 'MERGED') ? MERGED :
+                ($sha1 eq $curr_sha1) ? UNMODIFIED : OUTDATED;
+        } elsif ($ginfo && ($status ne 'NEW')) {
+            # We are attempting a push which Gerrit will reject anyway.
+            my $err;
+            if ($status eq 'MERGED') {
+                $err = "Change is already MERGED; use git gpull to rebase.";
+            } elsif ($status eq 'STAGED' || $status eq 'INTEGRATING') {
+                $err = "Change is currently $status; cannot proceed.";
+            } elsif ($status eq 'DEFERRED' || $status eq 'ABANDONED') {
+                $err = "Change is $status; please restore it first.";
+            } else {
+                $err = "Change is in unknown state '$status'. I'm stumped. :}";
+            }
+            set_change_error($change, 'oneline', $err);
+            $$change{freshness} = REJECTED;
+            $have_rejected++;
+        } else {
+            # Finally, check whether the current PatchSet on Gerrit meets our
+            # expectations, so we don't accidentally play ping-pong.
+            my $pushed = $$change{pushed};
+            if ($ginfo) {
+                if (!defined($pushed) || ($pushed ne $curr_sha1)) {
+                    # Having no pushed commit may indicate either that gpick --check
+                    # was not used or that it found divergence. It doesn't appear
+                    # useful to differentiate between the two.
+                    my $pushed_rev = defined($pushed) && $$chg_revs{$pushed};
+                    $$change{patchset} = $pushed_rev ? $$pushed_rev{ps} : "?";
+                    $$change{freshness} = FORCE;
+                    $need_force = 1;
+                } else {
+                    $$change{freshness} = MODIFIED;
+                }
+            } else {
+                if (defined($pushed)) {
+                    $$change{freshness} = MISSING;
+                    $need_force = 1;
+                } else {
+                    $$change{freshness} = NEW;
+                }
+            }
+            $any_modified++;
+        }
+    }
+    if ($any_modified) {
+        $$group{have_modified} = 1;
+        $have_modified = 1;
+    }
+}
+
+sub annotate_changes($)
+{
+    my ($group) = @_;
+
+    my $hide_mix = $list_only && $$group{hide_mix};
+    my $excl_mix = !$hide_mix && $list_only && $$group{exclude_mix};
+    foreach my $change (@{$$group{changes}}) {
+        my @attribs;
+        push @attribs, 'HIDDEN' if ($hide_mix && $$change{hide});
+        push @attribs, 'EXCLUDED' if ($excl_mix && $$change{exclude});
+        # Changes can be loose only when pushing all or listing, as
+        # otherwise they are currently being assigned, and showing
+        # them as still loose would be weird.
+        my $loose = ($push_all || $list_only) && !defined($$change{grp});
+        push @attribs, 'LOOSE' if ($loose);
+        # Changes in the 'modified' state (that is, the ones for which pushing
+        # actually has an effect) are annotated, while 'unmodified' ones are not.
+        # This behavior has been chosen after much deliberation following the
+        # principle that "no-op" should be silent, despite the fact that "doing
+        # nothing" is a diversion from what a regular git push would do, and is
+        # thus potentially confusing - but as having no modified changes at all
+        # leads to an additional message, the less noisy output (assuming that
+        # most Changes are usually not modified) seems most sensible.
+        # For loose Changes the most sensible default assumption is that they
+        # are 'new'; deviations occur for example when cherry-picking was done
+        # without gpick, or pushing was done without (or with an older) gpush.
+        my $freshness = $$change{freshness};
+        if (defined($freshness)
+            && ($loose ? ($freshness ne NEW)
+                       : ($freshness ne UNMODIFIED) && ($freshness ne KNOWN))) {
+            $freshness = "PS$$change{patchset}/$freshness"
+                if ($freshness eq OUTDATED || $freshness eq FORCE);
+            push @attribs, $freshness;
+        }
+        $$change{annotation} = '  ['.join('; ', @attribs).']'
+            if (@attribs);
+    }
+}
+
+sub make_listing($)
+{
+    my ($groups) = @_;
+
+    foreach my $group (@$groups) {
+        annotate_changes($group);
+    }
+    return report_pushed_changes(@$groups);
+}
+
+sub show_changes($)
+{
+    my ($groups) = @_;
+
+    print format_reports(make_listing($groups));
+}
+
+sub fail_push($@)
+{
+    my ($groups, @msgs) = @_;
+
+    my $reports = make_listing($groups);
+    report_fixed($reports, @msgs);
+    fail_formatted($reports);
+}
+
+sub print_errors($)
+{
+    my ($groups) = @_;
+
+    fail_push($groups, "Please use --rebase or specify "
+                      .($have_conflicts > 1 ? "different bases.\n" : "a different base.\n"))
+        if ($have_conflicts);
+    fail_push($groups, "Giving up - push is going to be rejected.\n")
+        if ($have_rejected);
+    fail_push($groups, "Local state is out of sync with Gerrit.\n",
+                       "Please use git gpick, or specify --force to push nonetheless.\n")
+        if ($need_force && !$force);
+}
+
+sub add_if_unmodified($$)
+{
+    my ($change, $list) = @_;
+
+    my $freshness = $$change{freshness};
+    if (($freshness eq UNMODIFIED) || ($freshness eq OUTDATED)) {
+        push @$list, $$change{final}{id};
+    }
+}
+
+sub prepare_meta($)
+{
+    my ($group) = @_;
+
+    # In principle, it would be possible to do this per fragment
+    # instead of per group, but that does not seem worth the effort.
+
+    my @invite_list;
+    my (%invite_rvrs, %invite_ccs);
+    if (@reviewers || @CCs) {
+        foreach my $change (@{$$group{changes}}) {
+            my $ginfo = $$change{gerrit};
+            my $rvrs = $ginfo ? $$ginfo{reviewers} : {};
+            my $any;
+            foreach my $rvr (@reviewers) {
+                if (($$rvrs{$rvr} // RVRTYPE_NONE) != RVRTYPE_REV) {
+                    $invite_rvrs{$rvr} = 1;
+                    $any = 1;
+                }
+            }
+            foreach my $cc (@CCs) {
+                if (($$rvrs{$cc} // RVRTYPE_NONE) != RVRTYPE_CC) {
+                    $invite_ccs{$cc} = 1;
+                    $any = 1;
+                }
+            }
+            # Can't add reviewers to unmodified Changes with a push.
+            add_if_unmodified($change, \@invite_list) if ($any);
+        }
+    }
+    $$group{add_rvrs} = [ keys %invite_rvrs ];
+    $$group{add_ccs} = [ keys %invite_ccs ];
+    $$group{invite_list} = \@invite_list;
+
+    my @topic_list;
+    my $tpc = $$group{topic};
+    if (defined($tpc)) {
+        my $any;
+        foreach my $change (@{$$group{changes}}) {
+            next if ($tpc eq ($$change{topic} // ""));
+            $any = 1;
+            # Can't set topic of unmodified Changes with a push.
+            add_if_unmodified($change, \@topic_list);
+        }
+        $$group{topic} = undef if (!$any);
+    }
+    $$group{topic_list} = \@topic_list;
+}
+
+sub push_fragment($$)
+{
+    my ($from, $group) = @_;
+
+    my $tip = $$from{final}{id};
+    my $to = $$group{branch};
+    my $tpc = $$group{topic};
+    my ($rvrs, $ccs) = ($$group{add_rvrs} // [], $$group{add_ccs} // []);
+
+    my $base = $$group{base};
+    if ($addbase == BASE_YES) {
+        print "Configuration mandates sending base.\n" if ($debug);
+    } elsif ($addbase == BASE_MAYBE) {
+        if ($commit_by_id{$base}) {
+            # Series which are pushed on top of other pending Changes have their
+            # base stored in an extra field on Gerrit, as otherwise gpick could
+            # not reliably determine it.
+            print "Sending base, as it is not in the upstream branch.\n" if ($debug);
+        } else {
+            $base = undef;
+        }
+    } else {
+        print "Configuration forbids sending base.\n" if ($debug);
+        $base = undef;
+    }
+
+    my @push_options;
+    push @push_options, "gpush-base=$base" if (defined($base));
+    push @push_options, "topic=$tpc" if (defined($tpc));
+    push @push_options, map { "r=$_" } @$rvrs;
+    push @push_options, map { "cc=$_" } @$ccs;
 
     my @gitcmd = ("git", "push");
     push @gitcmd, '-v' if ($verbose);
     push @gitcmd, '-q' if ($quiet);
     push @gitcmd, '-n' if ($dry_run);
-    push @gitcmd, @arguments;
-    push @gitcmd, $remote, "$ref_from:refs/".($draft > 0 ? 'drafts' : 'for')."/$ref_to";
+    push @gitcmd, map { ("-o", "$_") } @push_options;
+    push @gitcmd, $remote, "$tip:refs/for/$to";
 
     run_process(FWD_OUTPUT, @gitcmd);
 }
 
-load_config();
+sub push_changes($)
+{
+    my ($group) = @_;
+
+    my @heads;
+    my $base = "";
+    foreach my $change (@{$$group{changes}}) {
+        my $commit = $$change{final};
+        push @heads, undef if (get_1st_parent($commit) ne $base);
+        my $freshness = $$change{freshness};
+        $heads[-1] = $change
+            if (($freshness ne UNMODIFIED) && ($freshness ne OUTDATED) && ($freshness ne MERGED));
+        $base = $$commit{id};
+    }
+    foreach my $change (@heads) {
+        push_fragment($change, $group) if ($change);
+    }
+}
+
+sub update_unpushed($)
+{
+    my ($group) = @_;
+
+    my $invite_list = $$group{invite_list};
+    if (@$invite_list) {
+        state $printed;
+        print "Inviting reviewers/CCs to unmodified commit(s) ...\n"
+            if (!$quiet && !$printed);
+        $printed = 1;
+
+        my ($rvrs, $ccs) = ($$group{add_rvrs} // [], $$group{add_ccs} // []);
+        my @rlist;
+        foreach my $rvr (@$rvrs) {
+            push @rlist, { "reviewer" => $rvr, "state" => "REVIEWER" };
+        }
+        foreach my $cc (@$ccs) {
+            push @rlist, { "reviewer" => $cc, "state" => "CC" };
+        }
+        my $json = { "reviewers" => \@rlist };
+        my $pipe = open_process(USE_STDIN | FWD_OUTPUT | DRY_RUN,
+                                'ssh', @gerrit_ssh, 'gerrit', 'review', '--json',
+                                @$invite_list);
+        write_process($pipe, encode_json($json)."\n");
+        close_process($pipe);
+    }
+
+    my $topic_list = $$group{topic_list};
+    if (@$topic_list) {
+        # TODO: This can be done with the REST API.
+        state $printed;
+        print "Warning: Cannot set topic on unmodified commits.\n"
+            if (!$printed);
+        $printed = 1;
+    }
+}
+
+# We save the "prospective" state separately, so it remains authoritative
+# over gpick'd updates from Gerrit. However, we don't do that for the
+# series grouping, as that would lead to some unintuitive corner cases.
+sub update_state_grouping($)
+{
+    my ($group) = @_;
+
+    my $gid = $$group{gid};
+    foreach my $change (@{$$group{changes}}) {
+        $$change{grp} = $gid;
+        # We persist only explicitly specified values. Fallbacks
+        # are applied when the series is actually pushed.
+        $$change{ntopic} = $topic;
+        $$change{ntgt} = $ref_to;
+        $$change{nbase} = $ref_base;
+        $$change{exclude} = $exclude ? 1 : undef;
+    }
+}
+
+sub update_state($)
+{
+    my ($group) = @_;
+
+    my ($gid, $branch, $tpc, $base) =
+            ($$group{gid}, $$group{branch}, $$group{topic}, $$group{base});
+    # Setting an empty topic clears the previous topic from the server.
+    $tpc = undef if (defined($tpc) && !length($tpc));
+    foreach my $change (@{$$group{changes}}) {
+        $$change{grp} = $gid;
+        my $sha1 = $$change{final}{id};
+        if (($$change{pushed} // "") ne $sha1) {
+            $$change{pushed} = $sha1;
+            $$change{topic} = $tpc;
+            $$change{ntopic} = undef;
+        }
+        $$change{tgt} = $branch;
+        $$change{ntgt} = undef;
+        my $commit = $$change{local};
+        $$change{orig} = $$commit{id};
+        # --rebase would be required after redoing a merge with a different
+        # 1st parent anyway, so just don't save the base for merges.
+        # Regular commits on top of merges are auto-rebased as well.
+        $base = undef if (@{$$commit{parents}} > 1);
+        $$change{base} = $base;
+        $$change{nbase} = undef;
+        $$change{exclude} = undef;
+    }
+}
+
+sub execute_grouping()
+{
+    my $group = get_changes();
+    # We validate a possibly specified push base early on, mostly
+    # because delaying it would be a lot more complicated or costly.
+    my @queries;
+    resolve_ref_base(\@queries);
+    if (@queries) {
+        query_gerrit(\@queries);
+        confirm_ref_base();
+    }
+    # We could rebase here, as that would tell us whether the desired
+    # grouping is feasible (re dependencies) early on. However, it would
+    # significantly slow down the operation for this little benefit.
+    # We also don't query Gerrit, as online-classifying unrebased Changes
+    # yields mostly irrelevant and potentially even confusing annotations;
+    # branch tracking is not necessary here, either.
+    if (!$quiet) {
+        classify_changes_offline($group);
+        show_changes([ $group ]);
+    }
+    print "Not pushing - group mode.\n" if ($debug);
+    update_state_grouping($group);
+}
+
+sub execute_pushing()
+{
+    my $online = !$list_only || $list_online;
+    my ($groups, $all_groups);
+    if ($push_all) {
+        my $have_loose;
+        ($have_loose, $all_groups) = get_all_changes();
+        if ($have_loose && !$list_only) {
+            foreach my $group (@$all_groups) {
+                classify_changes_offline($group);
+            }
+            fail_push($all_groups, "Cannot push all with any free-standing loose Changes.\n");
+        }
+        $groups = [ grep { !$$_{hide} && !$$_{exclude} } @$all_groups ];
+    } else {
+        $groups = $all_groups = [ get_changes() ];
+    }
+    my $pushed_changes = [ map { @{$$_{changes}} } @$groups ];
+    if ($online) {
+        my @queries = map { "change:".$$_{id} } @$pushed_changes;
+        push @queries,
+                map { "commit:".$_ }
+                # Only ones that are not upstream yet.
+                grep { $commit_by_id{$_} }
+                # Only 2nd+ parents of local commits.
+                map { @$_ > 1 ? @$_[1 .. $#$_] : () }
+                map { $$_{local}{parents} } @$pushed_changes;
+        resolve_ref_base(\@queries);
+        my @args;
+        push @args, "--all-reviewers" if (@reviewers || @CCs);
+        query_gerrit(\@queries, \@args) if (@queries);
+    }
+    foreach my $group (@$groups) {
+        determine_remote_branch($group);
+    }
+    if ($online) {
+        foreach my $group (@$groups) {
+            check_merges($group);
+        }
+        map_remote_changes($groups);
+    }
+    foreach my $group (@$groups) {
+        determine_topic($group);
+    }
+    if ($online) {
+        # Rebasing may take a while, so make sure all base determination
+        # errors are reported before we start.
+        foreach my $group (@$groups) {
+            if (defined($$group{gid})) {
+                determine_base($group);
+            }
+        }
+        visit_pushed_changes($groups);
+        my $upstreamed_changes = get_upstreamed_changes($pushed_changes);
+        foreach my $group (@$groups) {
+            if (defined($$group{gid})) {
+                rebase_changes($group, $upstreamed_changes);
+                classify_changes_online($group);
+            } else {
+                # We don't rebase sets of loose Changes, as this will often
+                # create garbage or fail. We can get here only in --list mode.
+                classify_changes_offline($group);
+            }
+        }
+    } elsif (!$quiet) {
+        foreach my $group (@$groups) {
+            classify_changes_offline($group);
+        }
+    }
+    if ($list_only) {
+        show_changes($all_groups);
+        print "Not pushing - list mode.\n" if ($debug);
+    } else {
+        print_errors($groups);
+        show_changes($groups) if (!$quiet);
+        foreach my $group (@$groups) {
+            prepare_meta($group);
+        }
+        if ($have_modified) {
+            foreach my $group (@$groups) {
+                push_changes($group) if ($$group{have_modified});
+            }
+        } else {
+            print "No modified commits - nothing to push.\n" if (!$quiet);
+        }
+        foreach my $group (@$groups) {
+            update_unpushed($group);
+        }
+
+        # This makes sense even if no modified commits are pushed
+        # (e.g., syncing state after a dumb push).
+        foreach my $group (@$groups) {
+            update_state($group);
+        }
+    }
+}
+
+process_config();
 parse_arguments(@ARGV);
-add_reviewers();
 goto_gitdir();
-determine_target();
-push_patches();
+load_state(0);
+if ($group_only) {
+    execute_grouping();
+} else {
+    execute_pushing();
+}
+save_state($dry_run);
