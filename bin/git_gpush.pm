@@ -2150,8 +2150,9 @@ sub query_gerrit($;$)
     my ($ids, $extra) = @_;
 
     my @ginfos;
+    # EDIT: --no-limit does not seem to play well with Qt Gerrit => removed it below
     my $info = open_cmd_pipe(0, 'ssh', @gerrit_ssh, 'gerrit', 'query', '--format', 'JSON',
-                                '--no-limit', '--patch-sets', $extra ? @$extra : (),
+                                '--patch-sets', $extra ? @$extra : (),
                                 "project:$gerrit_project", '\\('.join(' OR ', @$ids).'\\)');
     while (read_process($info)) {
         my $review = decode_json($_);
