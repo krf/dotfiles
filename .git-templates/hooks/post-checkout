@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 # (C) 2015 Daniel Vrátil <dvratil@kde.org>
@@ -8,7 +8,7 @@
 #
  
 # https://github.com/gitpython-developers/GitPython
-import ConfigParser
+import configparser
 import os
 import sys
 
@@ -27,7 +27,7 @@ try:
     # The value of user.email is non-empty, stop here
     if config.get_value('user', 'email'):
         sys.exit(0)
-except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+except (configparser.NoSectionError, configparser.NoOptionError):
     # Section or option does not exist, continue
     pass
  
