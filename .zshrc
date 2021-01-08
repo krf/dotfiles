@@ -100,7 +100,10 @@ alias arc.patch='arc patch --nobranch'
 alias sprunge="curl -F 'sprunge=<-' http://sprunge.us"
 alias turbostat='sudo turbostat --hide "C1,C1E,C3,C6,C7s,C8,C9,C10,POLL%,CPU%c1,CPU%c3,CPU%c6,CPU%c7,CoreTmp,PkgTmp,GFX%rc6,GFXMHz,Totl%C0,Any%C0,GFX%C0,CPUGFX%,Pkg%pc2,Pkg%pc3,Pkg%pc6,Pkg%pc7,Pkg%pc8,Pkg%pc9,Pk%pc10,PkgWatt,CorWatt,GFXWatt,RAMWatt,PKG_%,RAM_%"' # turbostat really shows way too much info by default...
 # Alias for pandoc
-alias pandoc.pdf="pandoc -s -V geometry:margin=1in -V documentclass:article"
+#
+function pandoc.pdf() {
+    pandoc -s -V mainfont="DejaVu Sans" -V linkcolor:blue -V geometry:a4paper -V geometry:margin=2cm --pdf-engine=xelatex $1 -o "${1%.*}.pdf"
+}
 
 # Aliases (make tools in /sbin available)
 if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi

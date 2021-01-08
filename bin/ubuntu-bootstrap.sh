@@ -10,6 +10,6 @@ sudo apt-get install -y ack silversearcher-ag acpi apt-file automake bzr build-e
     libreoffice-kde hunspell-de-de `# for libreoffice` \
     libgetopt-euclid-perl `# for git-blame-stats` \
     libjson-perl libxml-parser-perl `# for kdesrc-build` \
-    libboost-dev libdrm-dev libgif-dev libgl-dev libical-dev libegl-dev libfam-dev libphonenumber-dev libxml2-dev libxslt-dev libsm-dev libssl-dev `# for Qt/KDE projects` \
+    intltool libboost-dev libdrm-dev libgif-dev libgl-dev libical-dev libegl-dev libfam-dev libphonenumber-dev libpolkit-gobject-1-dev libpolkit-agent-1-dev libxml2-dev libxslt-dev libsm-dev libssl-dev `# for Qt/KDE projects` \
 
 sudo apt-get build-dep -y kdevelop kmail kwin korganizer qt5-default

@@ -46,7 +46,7 @@ export QML2_IMPORT_PATH=$KDEDIR/lib/x86_64-linux-gnu/qml/:$QT_PLUGIN_PATH
 # Export the standard paths to include KDE
 export PATH=$KDEDIR/bin:$PATH
 export MANPATH=$KDEDIR/share/man:$MANPATH
-export LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$KDEDIR/lib/x86_64-linux-gnu:$KDEDIR/lib:$LD_LIBRARY_PATH
 export PKG_CONFIG_PATH=$KDEDIR/lib/pkgconfig:$PKG_CONFIG_PATH
 
 # Export the CMake paths so it searches for KDE in the right places

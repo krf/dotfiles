@@ -26,7 +26,11 @@ fi
 # kdesdk, or check out kdesdk/scripts from svn, or just don't set the alias
 # yet.
 if hash makeobj 2> /dev/null; then
-    alias make=makeobj
+    if hash ionice 2> /dev/null; then
+        alias make='nice ionice -c 3 makeobj'
+    else
+        alias make='nice makeobj'
+    fi
 fi
 
 ##

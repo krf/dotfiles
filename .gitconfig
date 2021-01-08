@@ -65,11 +65,8 @@
 [url "git@invent.kde.org:"]
 	insteadOf = kdeinvent:
 [url "git@invent.kde.org:"]
-	insteadOf = kdei:
-[url "ssh://git@git.kde.org/"]
+	insteadOf = kde:
 	pushInsteadOf = kde:
-	pushInsteadOf = git://anongit.kde.org/
-	pushInsteadOf = git://anongit1.kde.org/
 [url "git://github.com/"]
 	insteadOf = "github:"
 [url "git@github.com:"]
@@ -111,3 +108,5 @@
 	insteadOf = kde:
 [url "ssh://git@invent.kde.org/"]
 	pushInsteadOf = kde:
+[push]
+	default = current
