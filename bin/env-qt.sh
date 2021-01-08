@@ -2,8 +2,6 @@
 
 # Adjust environment for Qt. Needs to be sourced, e.g. 'source FILE'
 
-PATHNAME="$_"
-
 function __env-qt_show_usage() {
     echo "Usage: source $0 path/to/qt/ - ensure that this contains bin/qmake!"
 }
@@ -16,7 +14,8 @@ function __env-qt_main() {
         return
     fi
 
-    if [ "$PATHNAME" = "$0" ]; then
+    if [ "$0" = "$BASH_SOURCE" ]; then
+        # this where I found the above check: https://stackoverflow.com/a/2684300/592636
         echo "Do not run this script directly, source it!"
         return
     fi
