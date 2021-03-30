@@ -84,11 +84,11 @@ alias fnd="find . -iname"
 function f() { fnd "*$1*" }
 alias ..='cd ..'
 if mount | grep "on / " | grep btrfs &>/dev/null; then alias -g aptitude='eatmydata aptitude'; fi
-alias api='sudo apt-get install'
-alias apr='sudo apt-get remove'
-alias app='sudo apt-get remove --purge'
-alias aps='apt-cache search'
-alias apu='sudo apt-get update; sudo apt-get dist-upgrade'
+alias api='sudo apt install'
+alias apr='sudo apt remove'
+alias app='sudo apt purge'
+alias aps='apt search'
+alias apu='sudo apt update; sudo apt full-upgrade'
 alias apt-keyadv='sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com'
 alias bt='echo 0 | gdb -batch-silent -ex "run" -ex "set logging overwrite on" -ex "set logging file gdb.bt" -ex "set logging on" -ex "set pagination off" -ex "handle SIG33 pass nostop noprint" -ex "echo backtrace:\n" -ex "backtrace full" -ex "echo \n\nregisters:\n" -ex "info registers" -ex "echo \n\ncurrent instructions:\n" -ex "x/16i \$pc" -ex "echo \n\nthreads backtrace:\n" -ex "thread apply all backtrace" -ex "set logging off" -ex "quit" --args'
 alias psg='ps aux | grep'
@@ -110,7 +110,7 @@ if [ -x /sbin/ifconfig ]; then alias ifconfig='/sbin/ifconfig'; fi
 
 # Aliases (convenience)
 alias remove-spaces='find . -depth | rename "s/\ /_/g"' # with subdirs!
-alias pwgen='pwgen -B -y'
+alias pwgen='pwgen -B -y 12'
 alias whatismyip='dig @resolver1.opendns.com A myip.opendns.com +short -4'
 alias whatismyip6='dig @resolver1.opendns.com AAAA myip.opendns.com +short -6'
 alias bandwidth-test="wget http://old-releases.ubuntu.com/releases/karmic/ubuntu-9.10-desktop-amd64.iso --output-document=/dev/null"
@@ -157,7 +157,7 @@ alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
 function configure-qt5() {
     CONFIGURE=$1
     shift;
-    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtwebengine -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license -system-webengine-icu -no-webengine-ffmpeg -system-webengine-webp $*
+    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license -system-webengine-icu -no-webengine-ffmpeg -system-webengine-webp $*
 }
 
 # History settings

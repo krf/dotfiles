@@ -4,6 +4,10 @@
 	email = kfunk@kde.org
 	name = Kevin Funk
 
+[color "diff"]
+    frag = white reverse
+    meta = blue reverse white
+
 [diff "docx"]
 	binary = true
 	textconv = ~/bin/docx2txt-for-git.sh
@@ -110,3 +114,7 @@
 	pushInsteadOf = kde:
 [push]
 	default = current
+[credential]
+	helper = store
+[pull]
+	rebase = true

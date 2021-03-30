@@ -1,10 +1,28 @@
-### Sed magic examples
+### Search-replace magic examples
 $ perl -e 's/str1/str2/g;' -pi $(find . -type f -name "*cpp" -or -name "*.h")
 $ perl -i -pe 'BEGIN{undef $/;} s/(install.*?_version\.h.*?DESTINATION) (\${(.*?)})/\1 foo' CMakeLists.txt # multi-line replace, non-greedy
 $ perl -e 's/str1/str2/g;' -pi.save $(find . -type f -name "*py") # create backup files
 $ perl -e 's/\#ifndef (\w+_H)/#ifndef KGRAPHVIZ_\1/g;' -pi $(find . -type f -name "*.h") # add namespace to include guards
 $ perl -e 's/Analyzer::Internal/Valgrind::Internal/g;' -pi $(find . -type f -regextype posix-egrep -regex ".+cpp|.+h|.+ui")
 $ perl -i -0pe '~s/\n+$/\n/' $(find -iname "*cpp") # remove extra newlines at EOF
+
+# Perl multi-line replace (example: remove impl and decl of method)
+$ perl -0777 -pe '$pattern = qq(bool (\\w+)\Q::checkData(int row, int feldIndex, const QVariant &wert)
+{
+	if (row == -99) {
+		if (wert.toString() == "???") {
+            QMessageBoxExt::critical(nullptr, QObject::tr(gltext::error), tr("Wert ??? nicht erlaubt"), QMessageBox::Ok);
+			return false;
+		}
+	}
+	return true;
+}
+
+\E); $pattern =~ s/\n/\R/g; print $pattern; s/$pattern//igs' mAnrede.cpp
+
+for i in *; do perl -0777 -i -pe '$pattern = qq(\\s+\Qbool checkData(int row, int feldIndex, const QVariant &wert);\E); $pattern =~ s/\n/\R/g; s/$pattern//igs' $i
+
+
 
 # fix automoc warnings (brute-force method)
 Pipe compile/autmoc output to file 'a'. Then:

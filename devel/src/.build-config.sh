@@ -64,6 +64,9 @@ export CMAKE_INCLUDE_PATH=$KDEDIR/include:$CMAKE_INCLUDE_PATH
 #export XDG_CACHE_HOME=$HOME/.cache-$BUILDNAME
 #export XDG_CONFIG_HOME=$HOME/.config-$BUILDNAME
 
+# Fix bug: [11:32:50.540] akonadiserver(267292)/org.kde.pim.akonadiserver: unknown(0): Did not find MySQL server default configuration (mysql-global.conf) @ ?akonadiserver?|?akonadiserver?|?libQt5Core.so.5?|qt_message_output|QDebug::~QDebug|?akonadiserver?|?akonadiserver?|?akonadiserver?|?akonadiserver?|?libQt5Core.so.5?|QMetaCallEvent::placeMetaCall|QObject::event|QCoreApplicationPrivate::notify_helper|?libQt5Core.so.5?|QCoreApplication::notify|QCoreApplication::notifyInternal2|QCoreApplication::sendEvent|QCoreApplicationPrivate::sendPostedEvents|QCoreApplication::sendPostedEvents|?libQt5Core.so.5?
+export XDG_CONFIG_DIRS=$KDEDIR/etc/xdg:$XDG_CONFIG_DIRS # at least needed for finding mysql-global.conf for akonadi
+
 export XDG_DATA_DIRS=$KDEDIR/share:$XDG_DATA_DIRS
 
 # Uncomment if you are using Icecream for distributed compiling
