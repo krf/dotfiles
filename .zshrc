@@ -243,7 +243,7 @@ local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info.sh)%b%{${fg[default]}%}'
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
  %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
- %{$fg[green]%}"'$(LANGUAGE=C ls -lah | grep total | tr -d total\ )'"%{${reset_color}%}\
+ %{$fg[green]%}"'$(LANGUAGE=C ls -lah | head -1 | tr -d total\ )'"%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
 RPROMPT="%{$fg[white]%}${gitprompt} %T%{${reset_color}%}" # prompt for right side of screen
