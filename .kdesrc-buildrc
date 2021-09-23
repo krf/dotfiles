@@ -18,7 +18,8 @@ global
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS" -DCMAKE_C_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G "Ninja" -DCMAKE_MAKE_PROGRAM=/usr/bin/ninja
     branch-group kf5-qt5
 
-    ignore-kde-structure true
+    #ignore-kde-structure true
+    directory-layout flat
 
 end global
 

@@ -102,7 +102,12 @@ alias turbostat='sudo turbostat --hide "C1,C1E,C3,C6,C7s,C8,C9,C10,POLL%,CPU%c1,
 # Alias for pandoc
 #
 function pandoc.pdf() {
-    pandoc -s -V mainfont="DejaVu Sans" -V linkcolor:blue -V geometry:a4paper -V geometry:margin=2cm --pdf-engine=xelatex $1 -o "${1%.*}.pdf"
+    # Note: Needs package fonts-dejavu-extra for DejavuSans italic variation
+    pandoc -s -V mainfont="DejaVu Sans" -V linkcolor:blue -V geometry:a4paper -V geometry:margin=2cm --pdf-engine=xelatex $1 -o "${1%.*}.pdf" "${@:2}"
+}
+function pandoc.pdf.eisvogel() {
+    # Note: Needs package fonts-dejavu-extra for DejavuSans italic variation
+    pandoc -s -V mainfont="DejaVu Sans" -V linkcolor:blue -V geometry:a4paper -V geometry:margin=2cm --pdf-engine=xelatex $1 -o "${1%.*}.pdf" --template eisvogel --toc --toc-depth=2 "${@:2}"
 }
 
 # Aliases (make tools in /sbin available)
