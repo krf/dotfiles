@@ -29,8 +29,12 @@ fi
 #export PKG_CONFIG_PATH=$QTDIR/lib:$PKG_CONFIG_PATH
 
 # Set up the KDE paths
-export KDE_SRC=$BASEDIR/src
-export KDE_BUILD=$BASEDIR/build
+if [ -z "$KDE_SRC" ]; then 
+    export KDE_SRC=$BASEDIR/src
+fi
+if [ -z "$KDE_BUILD" ]; then
+    export KDE_BUILD=$BASEDIR/build
+fi
 export KDEDIR=$BASEDIR/install/$BUILDNAME
 export KDEDIRS=$KDEDIR
 export KDEHOME=$BASEDIR/home/.$BUILDNAME

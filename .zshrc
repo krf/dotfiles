@@ -19,6 +19,7 @@ else
     export NPROC=$(nproc)
 fi
 export CTEST_PARALLEL_LEVEL=$NPROC
+export NINJA_STATUS="[%f/%t %o/sec] "
 
 # Exports: Enable GCC output colorization (cf. https://reversed.top/2015-10-25/enable-colorization-of-gcc-output/)
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
@@ -54,7 +55,6 @@ export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
 export PATH=$PATH:/snap/bin
 
 # Aliases (shortcuts)
-alias cmake='cmake -G Ninja'
 alias chmox="chmod +x"
 alias cp='nocorrect cp' # ~ on cp
 alias mv='nocorrect mv' # no spelling correction on mv
