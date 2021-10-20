@@ -55,6 +55,7 @@
 	edit-unmerged = "!f() { git ls-files --unmerged | cut -f2 | sort -u ; }; vim `f`"
 
 	edit-last-commit = !vim `git diff-tree -r --name-only HEAD HEAD~1`
+	print-unreachable-commits = "!git fsck --no-reflogs --unreachable | awk '{if ($2 == \"commit\") print $3}'"
 
 #	post-review = !post-review -o --guess-summary --guess-description
 	post-review = rebase -i -x \"arc diff --head HEAD HEAD~1 && arc amend\"
