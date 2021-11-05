@@ -5,7 +5,7 @@ import os
 import sys
 
 # let's use the printers directly from our checkout
-sys.path.insert(0, os.path.expanduser('~/devel/src/kdevelop/plugins/gdb/printers'))
+sys.path.insert(0, os.path.expanduser('~/devel/src/kf5/kdevelop/plugins/gdb/printers'))
 
 from qt import register_qt_printers
 register_qt_printers (None)
