@@ -1,0 +1,3 @@
+#!/bin/sh
+
+perf record --call-graph dwarf --output=$HOME/perf.data $@
