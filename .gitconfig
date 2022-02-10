@@ -34,16 +34,17 @@
 	wdiff = diff --color-words
 	f = fetch --all
 	i = rebase -i
-	l = log --graph \
+	l = l-nograph --graph
+	l-nograph = log \
 	    --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
 	    --abbrev-commit --date=relative
-	l-nograph = log --pretty=format:'%h -%d %s (%cr) <%an>' --abbrev-commit --date=relative
 	lo = log -u --stat
 	r = pull --rebase
 	# https://stackoverflow.com/questions/17369254/is-there-a-way-to-cause-git-reflog-to-show-a-date-alongside-each-entry
 	rl = reflog --format='%C(auto)%h %<|(20)%gd %C(blue)%cr%C(reset) %gs (%s)'
 	rr = pull --rebase --recurse-submodules
-	s = status -uno
+	s = switch
+	stuno = status -uno
 	sur = submodule update --recursive
 	up = !git fetch --all && git stash && git pull --rebase && git stash pop
 
@@ -72,7 +73,7 @@
 [url "git@invent.kde.org:"]
 	insteadOf = kde:
 	pushInsteadOf = kde:
-[url "git://github.com/"]
+[url "git@github.com:"]
 	insteadOf = "github:"
 [url "git@github.com:"]
 	pushInsteadOf = "github:"
