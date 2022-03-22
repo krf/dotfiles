@@ -7,6 +7,7 @@ sudo apt-get install -y ack silversearcher-ag acpi apt-file automake bzr build-e
     bison clang cmake lld flex g++ ninja-build qmlscene qt5-qmake `# building` \
     fonts-dejavu-extra `# for pandoc with mainfont DejavuSans` \
     gperf `# for Qt5 webkit` \
+    libxshmfence-dev/impish `# for Qt6 WebEngine` \
     libdouble-conversion-dev libpcre2-dev `# for Qt5` \
     libreoffice-kde hunspell-de-de `# for libreoffice` \
     libgetopt-euclid-perl `# for git-blame-stats` \

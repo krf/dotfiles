@@ -165,6 +165,14 @@ function configure-qt5() {
     $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license -system-webengine-icu -no-webengine-ffmpeg -system-webengine-webp $*
 }
 
+function configure-qt6() {
+    PATH=/home/kfunk/opt/cmake-3.22.2-linux-x86_64/bin:$PATH
+    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFEATURE_developer_build=ON -DINPUT_dbus=linked -G Ninja \
+        -DQT_BUILD_TESTS_BY_DEFAULT=OFF -DQT_BUILD_EXAMPLES_BY_DEFAULT=OFF \
+        -DCMAKE_CXX_FLAGS="-fno-omit-frame-pointer" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS -DQT_MESSAGELOGCONTEXT" -DCMAKE_C_FLAGS_RELWITHDEBINFO="-O2 -g -DQT_FORCE_ASSERTS -DQT_MESSAGELOGCONTEXT" \
+        -DCMAKE_INSTALL_PREFIX=$PWD $*
+}
+
 # History settings
 HISTSIZE=10000 # Set command search history
 HISTFILE=~/.zsh_history
