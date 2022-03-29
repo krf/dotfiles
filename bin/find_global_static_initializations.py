@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # From: http://stackoverflow.com/questions/28101243/how-to-find-global-static-initializations/28146199?noredirect=1#28146199
 
