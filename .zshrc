@@ -65,6 +65,7 @@ alias pu=pushd
 alias po=popd
 alias d='dirs -v'
 alias ducks='du -cks * | sort -rn | head'
+alias find-duplicate-files='find . -type f -name "*.o" -printf '%p/ %f\n' | sort -k2 | uniq -f1 --all-repeated=separate' # https://stackoverflow.com/a/45971199
 alias find-biggest-files-and-dirs='du -a . | sort -n -r | head -n 20'
 alias h=history
 alias help=run-help
@@ -128,7 +129,7 @@ alias valgrind-callgrind='valgrind --tool=callgrind --fn-skip="QMetaObject::acti
 
 # Alias for quickly compiling Qt-related source file
 alias clang++-qt5='g++ -fPIC -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -lQt5Core'
-alias g++-qt5='g++ -fPIC -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -lQt5Core'
+alias g++-qt5='g++ -fPIC -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -lQt5Core -lQt5Gui -lQt5Widgets'
 
 # Alias (perf)
 alias perf.record='perf record --call-graph dwarf'
@@ -162,7 +163,13 @@ alias kdesrc-build-rel='kdesrc-build --rc-file=$HOME/.kdesrc-buildrc-rel'
 function configure-qt5() {
     CONFIGURE=$1
     shift;
-    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license -system-webengine-icu -no-webengine-ffmpeg -system-webengine-webp $*
+
+    # Note: Use gcc-11 since building QtWebEngine 5.15 against GCC 12.x does not work atm:
+    #   ../../../../../../src/qt5.15/qtwebengine/src/3rdparty/chromium/v8/src/compiler/common-operator.h:599:34: error: call to non-‘constexpr’ function ‘v8::internal::compiler::IrOpcode::Value v8::internal::compiler::Node::opcode() const’
+    #  599 |     CONSTEXPR_DCHECK(node->opcode() == IrOpcode::kStart);
+    #      |                      ~~~~~~~~~~~~^~
+
+    $CONFIGURE -developer-build -nomake tests -nomake examples -no-warnings-are-errors -skip qt3d -skip qtlocation -skip qtpurchasing -skip qtdocgallery -skip qtcanvas3d -skip qtsystems -skip qtpim -opensource -confirm-license -system-webengine-icu -no-webengine-ffmpeg -system-webengine-webp QMAKE_CXX=g++11 QMAKE_CC=gcc-11 $*
 }
 
 function configure-qt6() {
@@ -256,9 +263,9 @@ local gitprompt=$'%{${fg[yellow]}%}%B$(prompt_git_info.sh)%b%{${fg[default]}%}'
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
  %{$fg[yellow]%}%(4c.%1c.%~)%{${reset_color}%}\
- %{$fg[green]%}"'$(LANGUAGE=C ls -lah | head -1 | tr -d total\ )'"%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
+#%{$fg[green]%}"'$(LANGUAGE=C ls -lah | head -1 | tr -d total\ )'"%{${reset_color}%}\
 RPROMPT="%{$fg[white]%}${gitprompt} %T%{${reset_color}%}" # prompt for right side of screen
 
 # Emulate tcsh's backward-delete-word

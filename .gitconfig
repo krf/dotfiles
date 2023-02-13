@@ -4,10 +4,6 @@
 	email = kfunk@kde.org
 	name = Kevin Funk
 
-[color "diff"]
-    frag = white reverse
-    meta = blue reverse white
-
 [diff "docx"]
 	binary = true
 	textconv = ~/bin/docx2txt-for-git.sh
@@ -37,13 +33,21 @@
 	l = l-nograph --graph
 	l-nograph = log \
 	    --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
-	    --abbrev-commit --date=relative
+		--abbrev-commit --date=relative
+	lb = !git reflog show --pretty=format:'%gs ~ %gd' --date=relative | grep 'checkout:' | grep -oE '[^ ]+ ~ .*' | awk -F~ '!seen[$1]++' | head -n 10 | awk -F' ~ HEAD@{' '{printf(\"  \\033[33m%s: \\033[37m %s\\033[0m\\n\", substr($2, 1, length($2)-1), $1)}'
+
 	lo = log -u --stat
 	r = pull --rebase
+
 	# https://stackoverflow.com/questions/17369254/is-there-a-way-to-cause-git-reflog-to-show-a-date-alongside-each-entry
 	rl = reflog --format='%C(auto)%h %<|(20)%gd %C(blue)%cr%C(reset) %gs (%s)'
+
 	rr = pull --rebase --recurse-submodules
 	s = switch
+
+	# https://stackoverflow.com/questions/1657017/how-to-squash-all-git-commits-into-one
+	squash-all = "!f(){ git reset $(git commit-tree HEAD^{tree} \"$@\");};f"
+
 	stuno = status -uno
 	sur = submodule update --recursive
 	up = !git fetch --all && git stash && git pull --rebase && git stash pop
@@ -68,11 +72,8 @@
 # more aliases: http://www.jukie.net/~bart/conf/gitconfig
 
 # URL rewrites
-[url "git@invent.kde.org:"]
-	insteadOf = kdeinvent:
-[url "git@invent.kde.org:"]
+[url "https://invent.kde.org/"]
 	insteadOf = kde:
-	pushInsteadOf = kde:
 [url "git@github.com:"]
 	insteadOf = "github:"
 [url "git@github.com:"]
@@ -111,13 +112,12 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
-[url "https://invent.kde.org/"]
-	insteadOf = kde:
-[url "ssh://git@invent.kde.org/"]
-	pushInsteadOf = kde:
 [push]
 	default = current
+	autoSetupRemote = true
 [credential]
 	helper = store
 [pull]
 	rebase = true
+[url "ssh://git@invent.kde.org/"]
+	pushInsteadOf = kde:
