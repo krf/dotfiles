@@ -19,11 +19,12 @@ global
     branch-group kf5-qt5
 
     #ignore-kde-structure true
+    ignore-modules kidletime # needs too recent wayland-protocols on Ubuntu 22.10
     directory-layout flat
 
 end global
 
-include /home/kfunk/devel/src/kdesrc-build/kf5-qt5-build-include
+include /home/kfunk/devel/src/kf5/kdesrc-build/kf5-qt5-build-include
 
 module-set
     repository kde-projects
