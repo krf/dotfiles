@@ -34,6 +34,7 @@
 	l-nograph = log \
 	    --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %C(green)(%cr)%Creset %C(bold blue)<%an>%Creset' \
 		--abbrev-commit --date=relative
+	# List most recently used branches -- from http://ses4j.github.io/2020/04/01/git-alias-recent-branches/
 	lb = !git reflog show --pretty=format:'%gs ~ %gd' --date=relative | grep 'checkout:' | grep -oE '[^ ]+ ~ .*' | awk -F~ '!seen[$1]++' | head -n 10 | awk -F' ~ HEAD@{' '{printf(\"  \\033[33m%s: \\033[37m %s\\033[0m\\n\", substr($2, 1, length($2)-1), $1)}'
 
 	lo = log -u --stat
@@ -43,7 +44,7 @@
 	rl = reflog --format='%C(auto)%h %<|(20)%gd %C(blue)%cr%C(reset) %gs (%s)'
 
 	rr = pull --rebase --recurse-submodules
-	s = switch
+	sw = switch
 
 	# https://stackoverflow.com/questions/1657017/how-to-squash-all-git-commits-into-one
 	squash-all = "!f(){ git reset $(git commit-tree HEAD^{tree} \"$@\");};f"
