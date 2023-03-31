@@ -28,5 +28,6 @@ include /home/kfunk/devel/src/kf5/kdesrc-build/kf5-qt5-build-include
 module-set frameworks-stack
     repository kde-projects
     use-modules plasma-wayland-protocols frameworks plasma-integration
-    ignore-modules kidletime # needs too recent wayland-protocols on Ubuntu 22.10
+    #ignore-modules kidletime # needs too recent wayland-protocols on Ubuntu 22.10
+    ignore-modules baloo # depends on kidletime
 end module-set
