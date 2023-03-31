@@ -80,6 +80,7 @@
 [url "git@github.com:"]
 	pushInsteadOf = "github:"
 	pushInsteadOf = "git://github.com/"
+	pushInsteadOf = "https://github.com/"
 [url "https://gitlab.com/"]
 	insteadOf = "gitlab:"
 [url "git@gitlab.com:"]
