@@ -103,7 +103,7 @@
 [init]
 	templatedir = ~/.git-templates
 [core]
-	pager = perl /usr/share/doc/git/contrib/diff-highlight/diff-highlight | less
+	pager = perl /usr/share/doc/git/contrib/diff-highlight/diff-highlight | less -F
 	attributesfile = ~/.gitattributes_global
 [merge "ours"]
 	driver = true

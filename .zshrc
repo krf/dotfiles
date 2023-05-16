@@ -118,7 +118,6 @@ ZSH_THEME_GIT_PROMPT_BEHIND_REMOTE_COLOR=%{$fg[red]%}
 
 # Set prompt
 local returncode="%{$fg[red]%}-%?-%{$reset_color%}"
-local gitprompt=$'%{${fg[yellow]}%}%B$(get_git_status)%b%{${fg[default]}%}'
 
 PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 @%{$fg[cyan]%}%m%{${reset_color}%}\
@@ -126,7 +125,7 @@ PROMPT="[%{$terminfo[bold]$fg[cyan]%}%n%{${reset_color}%}\
 %(?,, ${returncode})%{${reset_color}%} \
 %{$fg[green]%}"'$(LANGUAGE=C ls -lah | head -1 | tr -d total\ )'"%{${reset_color}%}\
 ]%{$fg[white]%}%B%#%b%{${reset_color}%} "
-RPROMPT='%{$reset_color%}$(git_prompt_info)%{$reset_color%}$(git_remote_status) %T%{${reset_color}%}' # prompt for right side of screen
+RPROMPT='%{$reset_color%}$(git_prompt_info)$(git describe HEAD 2> /dev/null) $(git_remote_status) %T%{${reset_color}%}' # prompt for right side of screen
 
 # Exports
 export EDITOR="vim" # Set default editor
